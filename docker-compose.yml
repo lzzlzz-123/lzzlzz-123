@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-supersecret}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-weiboblog}
+      MYSQL_USER: ${MYSQL_USER:-weiboblog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-supersecret}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-weiboblog}
+      MYSQL_USER: ${MYSQL_USER:-weiboblog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-supersecret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-secret-value}
+    depends_on:
+      - mysql
+      - redis
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:

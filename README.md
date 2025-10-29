@@ -170,6 +170,16 @@ Detailed request/response payloads are defined through DTOs and can be explored 
 - `post_likes`: User likes on posts
 - `follows`: Follower/followee relationships
 
+### SQL Import Script
+
+A ready-to-run MySQL schema script is available at `backend/sql/schema.sql`. You can import it into an existing MySQL instance with:
+
+```bash
+mysql -h <host> -u <user> -p < backend/sql/schema.sql
+```
+
+Replace `<host>` and `<user>` with the appropriate values for your environment. The script creates the `weiboblog` database (if it does not already exist) and defines all required tables with indexes and constraints.
+
 ## Development Notes
 
 - All timestamps are stored as UTC `OffsetDateTime`

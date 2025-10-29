@@ -84,20 +84,63 @@ JWT_SECRET=change_this_secret
 
 ### Running Manually
 
+The commands below assume you are executing them from the project root. On Windows, prefer running them from PowerShell (or Git Bash/WSL for the Unix flavour).
+
 #### Backend
+
+**Linux / macOS / WSL / Git Bash**
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
 
+**Windows PowerShell**
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+The Maven Wrapper scripts included in the repository will download the appropriate Maven distribution automatically on the first run.
+
 #### Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
+The frontend commands are the same on Windows (PowerShell) and Unix-like shells.
+
 Ensure MySQL and Redis are running and the backend's `application.yml` is populated with valid credentials.
+
+### Windows Deployment Tips
+
+If you plan to deploy or develop on Windows natively (without relying entirely on WSL), keep the following points in mind:
+
+- Install [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) and enable WSL 2 integration so that the `docker` CLI is available from PowerShell.
+- Create the required `.env` file at the repository root (you can use Notepad or PowerShell's `Set-Content`). For example:
+  ```powershell
+  @'
+  MYSQL_ROOT_PASSWORD=supersecret
+  MYSQL_DATABASE=weiboblog
+  MYSQL_USER=weiboblog
+  MYSQL_PASSWORD=supersecret
+  JWT_SECRET=change_this_secret
+  '@ | Set-Content -Path .env
+  ```
+- From an elevated PowerShell window run:
+  ```powershell
+  cd <path-to-project-root>
+  docker compose up --build
+  ```
+  If you are using an older Docker Desktop release, replace `docker compose` with `docker-compose`.
+- When running the backend and frontend directly on the host, you can still leverage containers for infrastructure dependencies:
+  ```powershell
+  docker compose up -d mysql redis
+  ```
+  This starts MySQL and Redis in the background while you run `./mvnw` / `mvnw.cmd` and `npm run dev` locally.
+- Node.js 18+ is required for the frontend. On Windows you can install it with [nvm-windows](https://github.com/coreybutler/nvm-windows) or directly from the official installers.
 
 ## API Overview
 

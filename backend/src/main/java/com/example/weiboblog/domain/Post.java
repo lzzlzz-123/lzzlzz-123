@@ -39,6 +39,9 @@ public class Post {
     private List<String> mediaUrls = new ArrayList<>();
 
     @Column(nullable = false)
+    private long heat;
+
+    @Column(nullable = false)
     private OffsetDateTime createdAt;
 
     @Column(nullable = false)
@@ -49,6 +52,7 @@ public class Post {
         OffsetDateTime now = OffsetDateTime.now();
         createdAt = now;
         updatedAt = now;
+        heat = 0;
     }
 
     @PreUpdate
@@ -88,6 +92,14 @@ public class Post {
 
     public void setMediaUrls(List<String> mediaUrls) {
         this.mediaUrls = mediaUrls;
+    }
+
+    public long getHeat() {
+        return heat;
+    }
+
+    public void setHeat(long heat) {
+        this.heat = heat;
     }
 
     public OffsetDateTime getCreatedAt() {

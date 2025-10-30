@@ -8,6 +8,8 @@ public record UserProfileResponse(
         String displayName,
         String email,
         String bio,
+        String signature,
+        String location,
         String avatarUrl,
         OffsetDateTime createdAt,
         long followerCount,

@@ -35,6 +35,14 @@ public class PostController {
         return ResponseEntity.ok(postService.getGlobalFeed(page, size, viewerId));
     }
 
+    @GetMapping("/hotspot")
+    public ResponseEntity<PagedResponse<PostResponse>> hotspotFeed(@AuthenticationPrincipal UserPrincipal currentUser,
+                                                                    @RequestParam(defaultValue = "0") int page,
+                                                                    @RequestParam(defaultValue = "20") int size) {
+        Long viewerId = currentUser != null ? currentUser.getId() : null;
+        return ResponseEntity.ok(postService.getHotspotFeed(page, size, viewerId));
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<PagedResponse<PostResponse>> userFeed(@PathVariable Long userId,
                                                                  @AuthenticationPrincipal UserPrincipal currentUser,

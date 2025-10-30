@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import api from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
+import { HOTSPOT_THRESHOLD, LIKE_HEAT_WEIGHT } from "@/constants/heat";
 
 export interface TimelinePost {
   id: number;
@@ -16,6 +17,8 @@ export interface TimelinePost {
   };
   likeCount: number;
   commentCount: number;
+  heat: number;
+  inHotspot: boolean;
   likedByCurrentUser: boolean;
 }
 
@@ -88,14 +91,19 @@ export const useFeedStore = defineStore("feed", {
         await api.delete(`/posts/${postId}/like`);
         post.likedByCurrentUser = false;
         post.likeCount = Math.max(0, post.likeCount - 1);
+        post.heat = Math.max(0, post.heat - LIKE_HEAT_WEIGHT);
       } else {
         await api.post(`/posts/${postId}/like`);
         post.likedByCurrentUser = true;
         post.likeCount += 1;
+        post.heat += LIKE_HEAT_WEIGHT;
       }
+      post.inHotspot = post.heat >= HOTSPOT_THRESHOLD;
       if (fallback && fallback !== post) {
         fallback.likedByCurrentUser = post.likedByCurrentUser;
         fallback.likeCount = post.likeCount;
+        fallback.heat = post.heat;
+        fallback.inHotspot = post.inHotspot;
       }
     },
   },

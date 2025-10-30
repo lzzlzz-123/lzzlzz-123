@@ -16,6 +16,8 @@ import java.util.List;
 @Service
 public class CommentService {
 
+    private static final long COMMENT_HEAT_WEIGHT = 2L;
+
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserService userService;
@@ -38,6 +40,7 @@ public class CommentService {
         comment.setAuthor(author);
         comment.setContent(request.content());
         Comment saved = commentRepository.save(comment);
+        post.setHeat(post.getHeat() + COMMENT_HEAT_WEIGHT);
         return toResponse(saved);
     }
 

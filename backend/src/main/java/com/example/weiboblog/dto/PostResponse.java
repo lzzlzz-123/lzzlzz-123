@@ -12,6 +12,8 @@ public record PostResponse(
         UserSummaryDto author,
         long likeCount,
         long commentCount,
+        long heat,
+        boolean inHotspot,
         boolean likedByCurrentUser
 ) {
 }

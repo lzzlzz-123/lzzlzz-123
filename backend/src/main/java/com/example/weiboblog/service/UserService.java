@@ -3,6 +3,7 @@ package com.example.weiboblog.service;
 import com.example.weiboblog.domain.Follow;
 import com.example.weiboblog.domain.User;
 import com.example.weiboblog.dto.UserProfileResponse;
+import com.example.weiboblog.dto.UserProfileUpdateRequest;
 import com.example.weiboblog.exception.BadRequestException;
 import com.example.weiboblog.exception.ResourceNotFoundException;
 import com.example.weiboblog.repository.FollowRepository;
@@ -43,6 +44,21 @@ public class UserService {
     }
 
     @Transactional
+    public UserProfileResponse updateProfile(Long userId, UserProfileUpdateRequest request) {
+        User user = getById(userId);
+        user.setDisplayName(request.displayName().trim());
+        user.setBio(normalize(request.bio()));
+        user.setAvatarUrl(normalize(request.avatarUrl()));
+        user.setSignature(normalize(request.signature()));
+        user.setLocation(normalize(request.location()));
+        userRepository.save(user);
+        long followerCount = followRepository.countByFolloweeId(userId);
+        long followingCount = followRepository.countByFollowerId(userId);
+        long postCount = postRepository.countByAuthorId(userId);
+        return UserMapper.toProfile(user, followerCount, followingCount, postCount, false);
+    }
+
+    @Transactional
     public void follow(Long followerId, Long followeeId) {
         if (followerId.equals(followeeId)) {
             throw new BadRequestException("Cannot follow yourself");
@@ -62,5 +78,13 @@ public class UserService {
     public void unfollow(Long followerId, Long followeeId) {
         followRepository.findByFollowerIdAndFolloweeId(followerId, followeeId)
                 .ifPresent(followRepository::delete);
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

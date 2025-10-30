@@ -34,6 +34,12 @@ public class User {
     @Column(length = 280)
     private String bio;
 
+    @Column(length = 280)
+    private String signature;
+
+    @Column(length = 120)
+    private String location;
+
     @Column(length = 255)
     private String avatarUrl;
 
@@ -103,6 +109,22 @@ public class User {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getSignature() {
+        return signature;
+    }
+
+    public void setSignature(String signature) {
+        this.signature = signature;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 
     public String getAvatarUrl() {

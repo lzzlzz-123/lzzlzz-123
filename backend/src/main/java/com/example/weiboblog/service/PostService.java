@@ -30,6 +30,10 @@ import java.util.stream.Collectors;
 @Service
 public class PostService {
 
+    private static final long HOTSPOT_THRESHOLD = 10L;
+    private static final long LIKE_HEAT_WEIGHT = 1L;
+    private static final long COMMENT_HEAT_WEIGHT = 2L;
+
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final CommentRepository commentRepository;
@@ -58,6 +62,7 @@ public class PostService {
         post.setAuthor(author);
         post.setContent(request.content());
         post.setMediaUrls(request.mediaUrls() == null ? new ArrayList<>() : new ArrayList<>(request.mediaUrls()));
+        post.setHeat(0L);
         Post saved = postRepository.save(post);
         timelineService.cachePost(saved.getId(), author.getId(), saved.getCreatedAt());
         return toPostResponse(saved, authorId);
@@ -106,6 +111,16 @@ public class PostService {
         return new PagedResponse<>(responses, page, size, total, totalPages, last);
     }
 
+    @Transactional(readOnly = true)
+    public PagedResponse<PostResponse> getHotspotFeed(int page, int size, Long viewerId) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("heat"), Sort.Order.desc("updatedAt")));
+        Page<Post> postPage = postRepository.findByHeatGreaterThanEqual(HOTSPOT_THRESHOLD, pageable);
+        List<PostResponse> content = postPage.getContent().stream()
+                .map(post -> toPostResponse(post, viewerId))
+                .toList();
+        return new PagedResponse<>(content, page, size, postPage.getTotalElements(), postPage.getTotalPages(), postPage.isLast());
+    }
+
     @Transactional
     public void likePost(Long userId, Long postId) {
         if (postLikeRepository.existsByPostIdAndUserId(postId, userId)) {
@@ -118,12 +133,17 @@ public class PostService {
         like.setPost(post);
         like.setUser(user);
         postLikeRepository.save(like);
+        adjustHeat(post, LIKE_HEAT_WEIGHT);
     }
 
     @Transactional
     public void unlikePost(Long userId, Long postId) {
         postLikeRepository.findByPostIdAndUserId(postId, userId)
-                .ifPresent(postLikeRepository::delete);
+                .ifPresent(like -> {
+                    Post post = like.getPost();
+                    postLikeRepository.delete(like);
+                    adjustHeat(post, -LIKE_HEAT_WEIGHT);
+                });
     }
 
     private List<PostResponse> postsFromIds(List<Long> ids, Long viewerId) {
@@ -152,7 +172,17 @@ public class PostService {
                 author,
                 likeCount,
                 commentCount,
+                post.getHeat(),
+                post.getHeat() >= HOTSPOT_THRESHOLD,
                 liked
         );
+    }
+
+    private void adjustHeat(Post post, long delta) {
+        long updated = post.getHeat() + delta;
+        if (updated < 0) {
+            updated = 0;
+        }
+        post.setHeat(updated);
     }
 }

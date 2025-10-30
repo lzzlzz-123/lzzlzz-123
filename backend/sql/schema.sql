@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(120) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     bio VARCHAR(280),
+    signature VARCHAR(280),
+    location VARCHAR(120),
     avatar_url VARCHAR(255),
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -34,13 +36,15 @@ CREATE TABLE IF NOT EXISTS posts (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     author_id BIGINT UNSIGNED NOT NULL,
     content VARCHAR(500) NOT NULL,
+    heat BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_posts_author
         FOREIGN KEY (author_id) REFERENCES users (id)
         ON DELETE CASCADE,
     KEY idx_posts_author_id (author_id),
-    KEY idx_posts_created_at (created_at)
+    KEY idx_posts_created_at (created_at),
+    KEY idx_posts_heat (heat)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;

@@ -21,6 +21,10 @@
         💬
         <span>{{ post.commentCount }}</span>
       </RouterLink>
+      <span class="heat-indicator" :class="{ hot: post.inHotspot }">
+        🔥 {{ post.heat }}
+        <small v-if="post.inHotspot">热点</small>
+      </span>
     </footer>
   </article>
 </template>
@@ -130,5 +134,27 @@ footer a {
 
 footer button span.liked {
   color: #fda4af;
+}
+
+.heat-indicator {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #f97316;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.heat-indicator.hot {
+  color: #fb923c;
+}
+
+.heat-indicator small {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.2);
+  font-size: 0.7rem;
+  color: inherit;
 }
 </style>

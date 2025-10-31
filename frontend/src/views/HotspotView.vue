@@ -3,13 +3,14 @@
     <header class="hotspot-header">
       <h2>热点聚焦</h2>
       <button @click="refresh" :disabled="loading">
-        {{ loading && !posts.length ? "加载中..." : "刷新" }}
+        {{ isInitialLoading ? "加载中..." : "刷新" }}
       </button>
     </header>
     <p v-if="error" class="error">{{ error }}</p>
     <section class="hotspot-list">
       <PostCard v-for="post in posts" :key="post.id" :post="post" />
-      <p v-if="!loading && !posts.length" class="empty">暂时没有热点内容</p>
+      <p v-if="isInitialLoading" class="empty">加载中...</p>
+      <p v-else-if="isEmpty" class="empty">暂时没有热点内容</p>
     </section>
     <div class="actions">
       <button v-if="hasMore" :disabled="loading" @click="loadMore">
@@ -21,62 +22,22 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted } from "vue";
+import { storeToRefs } from "pinia";
 import PostCard from "@/components/PostCard.vue";
-import api from "@/api/client";
-import type { TimelinePost } from "@/stores/feed";
-import { HOTSPOT_THRESHOLD } from "@/constants/heat";
+import { useHotspotStore } from "@/stores/hotspot";
 
-const posts = ref<TimelinePost[]>([]);
-const page = ref(0);
-const size = 10;
-const hasMore = ref(true);
-const loading = ref(false);
-const error = ref<string | null>(null);
+const hotspotStore = useHotspotStore();
+const { posts, loading, hasMore, error } = storeToRefs(hotspotStore);
 
-const fetchHotspot = async (reset = false) => {
-  if (loading.value) return;
-  if (reset) {
-    page.value = 0;
-    hasMore.value = true;
-    posts.value = [];
-  }
-  if (!hasMore.value) return;
-  loading.value = true;
-  error.value = null;
-  try {
-    const { data } = await api.get("/posts/hotspot", {
-      params: { page: page.value, size },
-    });
-    if (page.value === 0) {
-      posts.value = data.content;
-    } else {
-      posts.value.push(...data.content);
-    }
-    hasMore.value = !data.last;
-    page.value += 1;
-  } catch (err: any) {
-    error.value = err?.response?.data?.message ?? "加载失败";
-  } finally {
-    loading.value = false;
-  }
-};
+const isInitialLoading = computed(() => loading.value && posts.value.length === 0);
+const isEmpty = computed(() => !loading.value && posts.value.length === 0);
 
-const refresh = () => fetchHotspot(true);
-const loadMore = () => fetchHotspot(false);
-
-watch(
-  posts,
-  () => {
-    if (posts.value.some((post) => post.heat < HOTSPOT_THRESHOLD)) {
-      posts.value = posts.value.filter((post) => post.heat >= HOTSPOT_THRESHOLD);
-    }
-  },
-  { deep: true }
-);
+const refresh = () => hotspotStore.refresh();
+const loadMore = () => hotspotStore.fetchMore();
 
 onMounted(() => {
-  fetchHotspot(true);
+  void hotspotStore.loadInitial();
 });
 </script>
 

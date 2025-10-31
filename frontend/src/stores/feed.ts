@@ -1,26 +1,9 @@
 import { defineStore } from "pinia";
 import api from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
+import { useHotspotStore } from "@/stores/hotspot";
 import { HOTSPOT_THRESHOLD, LIKE_HEAT_WEIGHT } from "@/constants/heat";
-
-export interface TimelinePost {
-  id: number;
-  content: string;
-  mediaUrls: string[];
-  createdAt: string;
-  updatedAt: string;
-  author: {
-    id: number;
-    username: string;
-    displayName: string;
-    avatarUrl?: string | null;
-  };
-  likeCount: number;
-  commentCount: number;
-  heat: number;
-  inHotspot: boolean;
-  likedByCurrentUser: boolean;
-}
+import type { TimelinePost } from "@/types/post";
 
 interface TimelineState {
   posts: TimelinePost[];
@@ -51,15 +34,25 @@ export const useFeedStore = defineStore("feed", {
       if (this.loading || !this.hasMore) return;
       this.loading = true;
       this.error = null;
+      const hotspotStore = useHotspotStore();
       try {
         const { data } = await api.get("/posts/feed", {
           params: { page: this.page, size: this.size },
         });
+        const fetched: TimelinePost[] = data.content ?? [];
         if (this.page === 0) {
-          this.posts = data.content;
+          this.posts = fetched.map((item) => ({ ...item }));
         } else {
-          this.posts.push(...data.content);
+          fetched.forEach((item) => {
+            const existing = this.posts.find((post) => post.id === item.id);
+            if (existing) {
+              Object.assign(existing, item);
+            } else {
+              this.posts.push(item);
+            }
+          });
         }
+        hotspotStore.syncPosts(fetched);
         this.hasMore = !data.last;
         this.page += 1;
       } catch (error: any) {
@@ -70,6 +63,7 @@ export const useFeedStore = defineStore("feed", {
     },
     prepend(post: TimelinePost) {
       this.posts.unshift(post);
+      useHotspotStore().syncPost(post);
     },
     async createPost(payload: { content: string; mediaUrls: string[] }) {
       const authStore = useAuthStore();
@@ -85,6 +79,7 @@ export const useFeedStore = defineStore("feed", {
       if (!authStore.isAuthenticated) {
         throw new Error("请先登录");
       }
+      const hotspotStore = useHotspotStore();
       const post = this.posts.find((p) => p.id === postId) ?? fallback;
       if (!post) return;
       if (post.likedByCurrentUser) {
@@ -99,12 +94,16 @@ export const useFeedStore = defineStore("feed", {
         post.heat += LIKE_HEAT_WEIGHT;
       }
       post.inHotspot = post.heat >= HOTSPOT_THRESHOLD;
+      const nowIso = new Date().toISOString();
+      post.updatedAt = nowIso;
       if (fallback && fallback !== post) {
         fallback.likedByCurrentUser = post.likedByCurrentUser;
         fallback.likeCount = post.likeCount;
         fallback.heat = post.heat;
         fallback.inHotspot = post.inHotspot;
+        fallback.updatedAt = nowIso;
       }
+      hotspotStore.syncPost(post);
     },
   },
 });

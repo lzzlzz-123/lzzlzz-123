@@ -2,9 +2,11 @@ package com.example.weiboblog.domain;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -27,18 +29,22 @@ public class Post {
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", nullable = false)
+    @JoinColumn(name = "author_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private User author;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id")
+    @JoinColumn(name = "topic_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Topic topic;
 
     @Column(nullable = false, length = 500)
     private String content;
 
     @ElementCollection
-    @CollectionTable(name = "post_media", joinColumns = @JoinColumn(name = "post_id"))
+    @CollectionTable(
+            name = "post_media",
+            joinColumns = @JoinColumn(name = "post_id"),
+            foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT)
+    )
     @Column(name = "media_url", length = 255)
     private List<String> mediaUrls = new ArrayList<>();
 

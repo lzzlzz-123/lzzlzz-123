@@ -20,6 +20,7 @@ public class Topic {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     @Column(nullable = false, length = 120, unique = true)
@@ -29,7 +30,7 @@ public class Topic {
     private String description;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
+    @JoinColumn(name = "owner_id", columnDefinition = "BIGINT UNSIGNED")
     private User owner;
 
     @Column(nullable = false)

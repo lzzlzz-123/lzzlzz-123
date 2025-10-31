@@ -10,6 +10,7 @@ public record PostResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         UserSummaryDto author,
+        TopicLightDto topic,
         long likeCount,
         long commentCount,
         long heat,

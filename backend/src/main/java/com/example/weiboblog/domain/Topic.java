@@ -1,8 +1,6 @@
 package com.example.weiboblog.domain;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -15,32 +13,24 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
-@Table(name = "posts")
-public class Post {
+@Table(name = "topics")
+public class Topic {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, length = 120, unique = true)
+    private String name;
+
+    @Column(length = 280)
+    private String description;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id")
-    private User author;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id")
-    private Topic topic;
-
-    @Column(nullable = false, length = 500)
-    private String content;
-
-    @ElementCollection
-    @CollectionTable(name = "post_media", joinColumns = @JoinColumn(name = "post_id"))
-    @Column(name = "media_url", length = 255)
-    private List<String> mediaUrls = new ArrayList<>();
+    @JoinColumn(name = "owner_id")
+    private User owner;
 
     @Column(nullable = false)
     private long heat;
@@ -66,8 +56,6 @@ public class Post {
         updatedAt = OffsetDateTime.now();
     }
 
-    // Getters and setters
-
     public Long getId() {
         return id;
     }
@@ -76,36 +64,28 @@ public class Post {
         this.id = id;
     }
 
-    public User getAuthor() {
-        return author;
+    public String getName() {
+        return name;
     }
 
-    public void setAuthor(User author) {
-        this.author = author;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public Topic getTopic() {
-        return topic;
+    public String getDescription() {
+        return description;
     }
 
-    public void setTopic(Topic topic) {
-        this.topic = topic;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
-    public String getContent() {
-        return content;
+    public User getOwner() {
+        return owner;
     }
 
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public List<String> getMediaUrls() {
-        return mediaUrls;
-    }
-
-    public void setMediaUrls(List<String> mediaUrls) {
-        this.mediaUrls = mediaUrls;
+    public void setOwner(User owner) {
+        this.owner = owner;
     }
 
     public long getHeat() {

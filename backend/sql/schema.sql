@@ -21,10 +21,52 @@ CREATE TABLE IF NOT EXISTS users (
     signature VARCHAR(280),
     location VARCHAR(120),
     avatar_url VARCHAR(255),
+    is_admin TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     UNIQUE KEY uq_users_username (username),
     UNIQUE KEY uq_users_email (email)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- Table `topics`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS topics (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(120) NOT NULL,
+    description VARCHAR(280),
+    owner_id BIGINT UNSIGNED NOT NULL,
+    heat BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT uq_topics_name UNIQUE (name),
+    CONSTRAINT fk_topics_owner
+        FOREIGN KEY (owner_id) REFERENCES users (id)
+        ON DELETE CASCADE,
+    KEY idx_topics_heat (heat)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- Table `topic_members`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS topic_members (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    topic_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT uq_topic_members UNIQUE (topic_id, user_id),
+    CONSTRAINT fk_topic_members_topic
+        FOREIGN KEY (topic_id) REFERENCES topics (id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_topic_members_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE CASCADE,
+    KEY idx_topic_members_topic_id (topic_id),
+    KEY idx_topic_members_user_id (user_id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
@@ -35,6 +77,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS posts (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     author_id BIGINT UNSIGNED NOT NULL,
+    topic_id BIGINT UNSIGNED NULL,
     content VARCHAR(500) NOT NULL,
     heat BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -42,7 +85,11 @@ CREATE TABLE IF NOT EXISTS posts (
     CONSTRAINT fk_posts_author
         FOREIGN KEY (author_id) REFERENCES users (id)
         ON DELETE CASCADE,
+    CONSTRAINT fk_posts_topic
+        FOREIGN KEY (topic_id) REFERENCES topics (id)
+        ON DELETE SET NULL,
     KEY idx_posts_author_id (author_id),
+    KEY idx_posts_topic_id (topic_id),
     KEY idx_posts_created_at (created_at),
     KEY idx_posts_heat (heat)
 ) ENGINE = InnoDB

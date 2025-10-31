@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
@@ -37,10 +39,17 @@ public class PostController {
 
     @GetMapping("/hotspot")
     public ResponseEntity<PagedResponse<PostResponse>> hotspotFeed(@AuthenticationPrincipal UserPrincipal currentUser,
-                                                                    @RequestParam(defaultValue = "0") int page,
-                                                                    @RequestParam(defaultValue = "20") int size) {
+                                                                     @RequestParam(defaultValue = "0") int page,
+                                                                     @RequestParam(defaultValue = "20") int size) {
         Long viewerId = currentUser != null ? currentUser.getId() : null;
         return ResponseEntity.ok(postService.getHotspotFeed(page, size, viewerId));
+    }
+
+    @GetMapping("/hotspot/ranking")
+    public ResponseEntity<List<PostResponse>> hotspotRanking(@AuthenticationPrincipal UserPrincipal currentUser,
+                                                              @RequestParam(defaultValue = "10") int size) {
+        Long viewerId = currentUser != null ? currentUser.getId() : null;
+        return ResponseEntity.ok(postService.getHotspotRanking(size, viewerId));
     }
 
     @GetMapping("/user/{userId}")

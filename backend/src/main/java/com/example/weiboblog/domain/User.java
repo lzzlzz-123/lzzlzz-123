@@ -43,6 +43,9 @@ public class User {
     @Column(length = 255)
     private String avatarUrl;
 
+    @Column(name = "is_admin", nullable = false)
+    private boolean admin;
+
     @Column(nullable = false)
     private OffsetDateTime createdAt;
 
@@ -133,6 +136,14 @@ public class User {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public boolean isAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
     }
 
     public OffsetDateTime getCreatedAt() {

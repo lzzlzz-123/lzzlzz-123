@@ -180,6 +180,8 @@ mysql -h <host> -u <user> -p < backend/sql/schema.sql
 
 Replace `<host>` and `<user>` with the appropriate values for your environment. The script creates the `weiboblog` database (if it does not already exist) and defines all required tables with indexes and constraints.
 
+If you are upgrading an earlier installation, run `mysql -h <host> -u <user> -p < backend/sql/fix_fk_type_mismatch.sql` afterwards to ensure the user-related foreign keys on `topics` and `topic_members` use the correct `BIGINT` data type.
+
 ## Development Notes
 
 - All timestamps are stored as UTC `OffsetDateTime`

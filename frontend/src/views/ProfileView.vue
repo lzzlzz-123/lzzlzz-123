@@ -85,7 +85,8 @@ import { useRoute } from "vue-router";
 import PostCard from "@/components/PostCard.vue";
 import api from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
-import type { TimelinePost } from "@/stores/feed";
+import { useHotspotStore } from "@/stores/hotspot";
+import type { TimelinePost } from "@/types/post";
 
 interface ProfileResponse {
   id: number;
@@ -105,6 +106,7 @@ interface ProfileResponse {
 
 const route = useRoute();
 const authStore = useAuthStore();
+const hotspotStore = useHotspotStore();
 const profile = ref<ProfileResponse | null>(null);
 const posts = ref<TimelinePost[]>([]);
 const page = ref(0);
@@ -192,11 +194,20 @@ const fetchPosts = async () => {
     const { data } = await api.get(`/posts/user/${profile.value.id}`, {
       params: { page: page.value, size },
     });
+    const fetched: TimelinePost[] = data.content ?? [];
     if (page.value === 0) {
-      posts.value = data.content;
+      posts.value = fetched.map((item) => ({ ...item }));
     } else {
-      posts.value.push(...data.content);
+      fetched.forEach((item) => {
+        const existing = posts.value.find((post) => post.id === item.id);
+        if (existing) {
+          Object.assign(existing, item);
+        } else {
+          posts.value.push(item);
+        }
+      });
     }
+    hotspotStore.syncPosts(fetched);
     hasMore.value = !data.last;
     page.value += 1;
   } finally {

@@ -32,7 +32,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter, RouterLink } from "vue-router";
-import { useFeedStore, type TimelinePost } from "@/stores/feed";
+import { useFeedStore } from "@/stores/feed";
+import type { TimelinePost } from "@/types/post";
 
 const props = defineProps<{ post: TimelinePost }>();
 const feedStore = useFeedStore();

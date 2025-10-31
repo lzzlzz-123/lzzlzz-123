@@ -30,7 +30,9 @@ import { useRoute } from "vue-router";
 import PostCard from "@/components/PostCard.vue";
 import api from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
-import { useFeedStore, type TimelinePost } from "@/stores/feed";
+import { useFeedStore } from "@/stores/feed";
+import { useHotspotStore } from "@/stores/hotspot";
+import type { TimelinePost } from "@/types/post";
 import { COMMENT_HEAT_WEIGHT, HOTSPOT_THRESHOLD } from "@/constants/heat";
 
 interface CommentResponse {
@@ -48,6 +50,7 @@ interface CommentResponse {
 const route = useRoute();
 const authStore = useAuthStore();
 const feedStore = useFeedStore();
+const hotspotStore = useHotspotStore();
 const post = ref<TimelinePost | null>(null);
 const comments = ref<CommentResponse[]>([]);
 const commentContent = ref("");
@@ -64,6 +67,7 @@ const fetchPost = async (id: string) => {
   const { data } = await api.get<TimelinePost>(`/posts/${id}`);
   post.value = data;
   syncWithFeedStore(data);
+  hotspotStore.syncPost(data);
 };
 
 const fetchComments = async (id: string) => {
@@ -89,7 +93,9 @@ const submitComment = async () => {
       post.value.commentCount += 1;
       post.value.heat += COMMENT_HEAT_WEIGHT;
       post.value.inHotspot = post.value.heat >= HOTSPOT_THRESHOLD;
+      post.value.updatedAt = new Date().toISOString();
       syncWithFeedStore(post.value);
+      hotspotStore.syncPost(post.value);
     }
   } finally {
     postingComment.value = false;

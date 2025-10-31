@@ -19,15 +19,14 @@ public class Comment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "author_id", nullable = false)
     private User author;
 
     @Column(nullable = false, length = 280)

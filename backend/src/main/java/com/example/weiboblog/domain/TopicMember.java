@@ -22,15 +22,14 @@ public class TopicMember {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id", columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "topic_id", nullable = false)
     private Topic topic;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", columnDefinition = "BIGINT UNSIGNED")
+    @JoinColumn(name = "user_id", nullable = false)
     private User member;
 
     @Column(nullable = false)

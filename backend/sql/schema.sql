@@ -12,7 +12,7 @@ USE weiboblog;
 -- Table `users`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     email VARCHAR(120) NOT NULL,
@@ -34,10 +34,10 @@ CREATE TABLE IF NOT EXISTS users (
 -- Table `topics`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS topics (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
     description VARCHAR(280),
-    owner_id BIGINT UNSIGNED NOT NULL,
+    owner_id BIGINT NOT NULL,
     heat BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -54,9 +54,9 @@ CREATE TABLE IF NOT EXISTS topics (
 -- Table `topic_members`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS topic_members (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    topic_id BIGINT UNSIGNED NOT NULL,
-    user_id BIGINT UNSIGNED NOT NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    topic_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_topic_members UNIQUE (topic_id, user_id),
     CONSTRAINT fk_topic_members_topic
@@ -75,9 +75,9 @@ CREATE TABLE IF NOT EXISTS topic_members (
 -- Table `posts`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS posts (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    author_id BIGINT UNSIGNED NOT NULL,
-    topic_id BIGINT UNSIGNED NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    author_id BIGINT NOT NULL,
+    topic_id BIGINT NULL,
     content VARCHAR(500) NOT NULL,
     heat BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -100,8 +100,8 @@ CREATE TABLE IF NOT EXISTS posts (
 -- Table `post_media`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS post_media (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    post_id BIGINT UNSIGNED NOT NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    post_id BIGINT NOT NULL,
     media_url VARCHAR(255) NOT NULL,
     CONSTRAINT fk_post_media_post
         FOREIGN KEY (post_id) REFERENCES posts (id)
@@ -115,9 +115,9 @@ CREATE TABLE IF NOT EXISTS post_media (
 -- Table `comments`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS comments (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    post_id BIGINT UNSIGNED NOT NULL,
-    author_id BIGINT UNSIGNED NOT NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    author_id BIGINT NOT NULL,
     content VARCHAR(280) NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_comments_post
@@ -136,9 +136,9 @@ CREATE TABLE IF NOT EXISTS comments (
 -- Table `post_likes`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS post_likes (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    post_id BIGINT UNSIGNED NOT NULL,
-    user_id BIGINT UNSIGNED NOT NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_post_likes_post_user
         UNIQUE (post_id, user_id),
@@ -157,9 +157,9 @@ CREATE TABLE IF NOT EXISTS post_likes (
 -- Table `follows`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS follows (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    follower_id BIGINT UNSIGNED NOT NULL,
-    followee_id BIGINT UNSIGNED NOT NULL,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    follower_id BIGINT NOT NULL,
+    followee_id BIGINT NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_follows_follower_followee
         UNIQUE (follower_id, followee_id),

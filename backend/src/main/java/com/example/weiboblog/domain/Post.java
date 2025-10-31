@@ -24,21 +24,22 @@ public class Post {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id")
+    @JoinColumn(name = "author_id", columnDefinition = "BIGINT UNSIGNED")
     private User author;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id")
+    @JoinColumn(name = "topic_id", columnDefinition = "BIGINT UNSIGNED")
     private Topic topic;
 
     @Column(nullable = false, length = 500)
     private String content;
 
     @ElementCollection
-    @CollectionTable(name = "post_media", joinColumns = @JoinColumn(name = "post_id"))
+    @CollectionTable(name = "post_media", joinColumns = @JoinColumn(name = "post_id", columnDefinition = "BIGINT UNSIGNED"))
     @Column(name = "media_url", length = 255)
     private List<String> mediaUrls = new ArrayList<>();
 

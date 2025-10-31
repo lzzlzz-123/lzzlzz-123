@@ -20,14 +20,15 @@ public class Follow {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "follower_id")
+    @JoinColumn(name = "follower_id", columnDefinition = "BIGINT UNSIGNED")
     private User follower;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "followee_id")
+    @JoinColumn(name = "followee_id", columnDefinition = "BIGINT UNSIGNED")
     private User followee;
 
     @Column(nullable = false)

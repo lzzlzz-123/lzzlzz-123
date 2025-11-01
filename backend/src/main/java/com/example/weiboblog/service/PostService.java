@@ -63,6 +63,23 @@ public class PostService {
 
     @Transactional
     public PostResponse createPost(Long authorId, PostCreateRequest request) {
+        return createPostInternal(authorId, request, true);
+    }
+
+    @Transactional
+    public PostResponse createHotspotPost(Long adminId, HotspotPostCreateRequest request) {
+        PostResponse created = createPostInternal(
+                adminId,
+                new PostCreateRequest(request.content(), request.mediaUrls(), request.topicId()),
+                false
+        );
+        if (request.initialHeat() <= 0) {
+            return created;
+        }
+        return updateHeat(created.id(), request.initialHeat(), adminId);
+    }
+
+    private PostResponse createPostInternal(Long authorId, PostCreateRequest request, boolean requireTopicMembership) {
         if (request.mediaUrls() != null && request.mediaUrls().stream().anyMatch(Objects::isNull)) {
             throw new BadRequestException("Media URLs cannot be null");
         }
@@ -76,7 +93,7 @@ public class PostService {
         if (request.topicId() != null) {
             topic = topicRepository.findById(request.topicId())
                     .orElseThrow(() -> new ResourceNotFoundException("Topic not found: " + request.topicId()));
-            if (!topicMemberRepository.existsByTopicIdAndMemberId(topic.getId(), authorId)) {
+            if (requireTopicMembership && !topicMemberRepository.existsByTopicIdAndMemberId(topic.getId(), authorId)) {
                 throw new BadRequestException("Join the topic before posting");
             }
             post.setTopic(topic);
@@ -88,15 +105,6 @@ public class PostService {
             adjustTopicHeat(topic, TOPIC_POST_HEAT_BONUS);
         }
         return toPostResponse(saved, authorId);
-    }
-
-    @Transactional
-    public PostResponse createHotspotPost(Long adminId, HotspotPostCreateRequest request) {
-        PostResponse created = createPost(adminId, new PostCreateRequest(request.content(), request.mediaUrls(), request.topicId()));
-        if (request.initialHeat() <= 0) {
-            return created;
-        }
-        return updateHeat(created.id(), request.initialHeat(), adminId);
     }
 
     @Transactional(readOnly = true)

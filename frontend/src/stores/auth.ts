@@ -6,6 +6,7 @@ export interface AuthUser {
   username: string;
   displayName: string;
   avatarUrl?: string | null;
+  admin: boolean;
 }
 
 interface AuthState {
@@ -18,13 +19,36 @@ interface AuthState {
 const TOKEN_KEY = "weiboblog/token";
 const USER_KEY = "weiboblog/user";
 
+const normalizeUserSummary = (input: any): AuthUser => {
+  const idValue = typeof input?.id === "number" ? input.id : Number(input?.id);
+  return {
+    id: Number.isFinite(idValue) ? idValue : 0,
+    username: typeof input?.username === "string" ? input.username : "",
+    displayName: typeof input?.displayName === "string" ? input.displayName : "",
+    avatarUrl:
+      typeof input?.avatarUrl === "string" ? input.avatarUrl : input?.avatarUrl ?? null,
+    admin: Boolean(input?.admin),
+  };
+};
+
+const parseStoredUser = (raw: string | null): AuthUser | null => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return normalizeUserSummary(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
 const loadInitialState = (): Pick<AuthState, "token" | "user"> => {
   if (typeof window === "undefined") {
     return { token: null, user: null };
   }
   const token = localStorage.getItem(TOKEN_KEY);
   const userRaw = localStorage.getItem(USER_KEY);
-  const user = userRaw ? (JSON.parse(userRaw) as AuthUser) : null;
+  const user = parseStoredUser(userRaw);
   if (token) {
     setAuthToken(token);
   }
@@ -44,7 +68,8 @@ export const useAuthStore = defineStore("auth", {
     isAuthenticated: (state) => Boolean(state.token),
   },
   actions: {
-    setCredentials(token: string, user: AuthUser) {
+    setCredentials(token: string, userLike: unknown) {
+      const user = normalizeUserSummary(userLike as any);
       this.token = token;
       this.user = user;
       setAuthToken(token);
@@ -92,9 +117,10 @@ export const useAuthStore = defineStore("auth", {
       if (!this.token) return;
       try {
         const { data } = await api.get("/users/me");
-        this.user = data;
+        const user = normalizeUserSummary(data);
+        this.user = user;
         if (typeof window !== "undefined") {
-          localStorage.setItem(USER_KEY, JSON.stringify(data));
+          localStorage.setItem(USER_KEY, JSON.stringify(user));
         }
       } catch (error) {
         this.clearCredentials();

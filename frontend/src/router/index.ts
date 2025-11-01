@@ -5,6 +5,7 @@ import RegisterView from "@/views/RegisterView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import PostDetailView from "@/views/PostDetailView.vue";
 import HotspotView from "@/views/HotspotView.vue";
+import TopicsView from "@/views/TopicsView.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const router = createRouter({
@@ -19,6 +20,11 @@ const router = createRouter({
       path: "/hotspot",
       name: "hotspot",
       component: HotspotView,
+    },
+    {
+      path: "/topics",
+      name: "topics",
+      component: TopicsView,
     },
     {
       path: "/login",

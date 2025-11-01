@@ -4,6 +4,10 @@ export interface TimelinePost {
   mediaUrls: string[];
   createdAt: string;
   updatedAt: string;
+  topic?: {
+    id: number;
+    name: string;
+  } | null;
   author: {
     id: number;
     username: string;

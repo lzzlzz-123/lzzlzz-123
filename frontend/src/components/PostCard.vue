@@ -9,8 +9,12 @@
       <time>{{ formattedTime }}</time>
     </header>
     <p class="content">{{ post.content }}</p>
+    <span v-if="post.topic" class="topic-pill">#{{ post.topic.name }}</span>
     <div v-if="post.mediaUrls?.length" class="media-grid">
-      <img v-for="(url, index) in post.mediaUrls" :key="index" :src="url" :alt="`media-${index}`" @click.stop />
+      <div v-for="(url, index) in post.mediaUrls" :key="index" class="media-item">
+        <video v-if="isVideo(url)" controls :src="url" @click.stop></video>
+        <img v-else :src="url" :alt="`media-${index}`" @click.stop />
+      </div>
     </div>
     <footer>
       <button @click.stop="toggleLike">
@@ -38,6 +42,14 @@ import type { TimelinePost } from "@/types/post";
 const props = defineProps<{ post: TimelinePost }>();
 const feedStore = useFeedStore();
 const router = useRouter();
+
+const VIDEO_EXTENSIONS = ["mp4", "webm", "ogg", "ogv", "mov", "m4v", "avi"] as const;
+const isVideo = (url: string) => {
+  if (!url) return false;
+  const clean = url.split(/[?#]/)[0];
+  const extension = clean.split(".").pop()?.toLowerCase();
+  return extension ? VIDEO_EXTENSIONS.includes(extension as typeof VIDEO_EXTENSIONS[number]) : false;
+};
 
 const formattedTime = computed(() => new Date(props.post.createdAt).toLocaleString());
 
@@ -103,16 +115,44 @@ time {
   white-space: pre-line;
 }
 
-.media-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.5rem;
+.topic-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  align-self: flex-start;
+  margin-top: -0.25rem;
+  margin-bottom: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
 }
 
-.media-grid img {
-  width: 100%;
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.media-item {
+  position: relative;
+  overflow: hidden;
   border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.media-item img,
+.media-item video {
+  width: 100%;
+  height: 180px;
   object-fit: cover;
+  display: block;
+}
+
+.media-item video {
+  background: #0f172a;
 }
 
 footer {

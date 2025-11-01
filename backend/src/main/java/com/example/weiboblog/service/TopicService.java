@@ -96,7 +96,7 @@ public class TopicService {
 
     @Transactional(readOnly = true)
     public List<TopicSummaryDto> getTopicRankings(int size, Long viewerId) {
-        int limit = Math.max(1, Math.min(size, 50));
+        int limit = Math.max(1, Math.min(size, 20));
         Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Order.desc("heat"), Sort.Order.desc("updatedAt")));
         Page<Topic> page = topicRepository.findAllByOrderByHeatDescUpdatedAtDesc(pageable);
         return page.getContent().stream()

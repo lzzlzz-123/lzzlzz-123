@@ -65,7 +65,7 @@ public class TopicController {
 
     @GetMapping("/rankings")
     public ResponseEntity<List<TopicSummaryDto>> rankings(@AuthenticationPrincipal UserPrincipal currentUser,
-                                                          @RequestParam(defaultValue = "10") int size) {
+                                                          @RequestParam(defaultValue = "20") int size) {
         Long viewerId = currentUser != null ? currentUser.getId() : null;
         return ResponseEntity.ok(topicService.getTopicRankings(size, viewerId));
     }

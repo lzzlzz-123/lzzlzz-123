@@ -11,21 +11,52 @@
       maxlength="500"
       placeholder="此刻想说什么？"
     ></textarea>
-    <div class="media-inputs">
-      <input
-        v-for="(url, index) in mediaUrls"
-        :key="index"
-        v-model="mediaUrls[index]"
-        type="url"
-        placeholder="图片或视频链接"
-      />
-      <button class="link-add" type="button" @click="addMediaField" :disabled="mediaUrls.length >= 4">
-        添加媒体
-      </button>
+    <div class="composer-controls">
+      <div class="media-section">
+        <div class="media-header">
+          <span>媒体附件</span>
+          <span class="media-counter">{{ uploadedMedia.length }}/{{ MAX_MEDIA }}</span>
+        </div>
+        <div class="media-actions">
+          <button type="button" class="upload" :disabled="!canAddMoreMedia || isUploading" @click="openFilePicker">
+            {{ isUploading ? "上传中..." : "上传图片 / 视频" }}
+          </button>
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            hidden
+            @change="onFilesSelected"
+          />
+        </div>
+        <p v-if="uploadError" class="error">{{ uploadError }}</p>
+        <div v-if="uploadedMedia.length" class="media-preview">
+          <div v-for="(media, index) in uploadedMedia" :key="media.url" class="media-item">
+            <button type="button" class="remove" @click="removeMedia(index)">×</button>
+            <img
+              v-if="media.mediaType !== 'video'"
+              :src="media.url"
+              :alt="media.originalFilename ?? `media-${index}`"
+            />
+            <video v-else controls :src="media.url"></video>
+            <small>{{ media.originalFilename ?? `附件${index + 1}` }}</small>
+          </div>
+        </div>
+      </div>
+      <div v-if="topicOptions.length" class="topic-selector">
+        <label for="composer-topic">选择话题</label>
+        <select id="composer-topic" v-model="selectedTopicId">
+          <option :value="null">不关联话题</option>
+          <option v-for="topic in topicOptions" :key="topic.id" :value="topic.id">
+            {{ topic.name }} · 热度 {{ topic.heat }}
+          </option>
+        </select>
+      </div>
     </div>
     <div class="actions">
       <span>{{ content.length }}/500</span>
-      <button type="button" class="submit" :disabled="isSubmitting || !content.trim()" @click="submit">
+      <button type="button" class="submit" :disabled="!canSubmit" @click="submit">
         {{ isSubmitting ? "发布中..." : "发布" }}
       </button>
     </div>
@@ -33,40 +64,117 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
+import { uploadMedia } from "@/api/media";
 import { useAuthStore } from "@/stores/auth";
 import { useFeedStore } from "@/stores/feed";
+import { useTopicStore } from "@/stores/topic";
+import type { UploadedMedia } from "@/types/media";
+import type { TopicSummary } from "@/types/topic";
+
+const MAX_MEDIA = 4;
 
 const emit = defineEmits<["posted"]>();
 const authStore = useAuthStore();
 const feedStore = useFeedStore();
+const topicStore = useTopicStore();
+const { myTopics } = storeToRefs(topicStore);
 
 const content = ref("");
-const mediaUrls = ref<string[]>([]);
+const uploadedMedia = ref<UploadedMedia[]>([]);
 const isSubmitting = ref(false);
+const isUploading = ref(false);
+const uploadError = ref<string | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+const selectedTopicId = ref<number | null>(null);
 
-const addMediaField = () => {
-  if (mediaUrls.value.length < 4) {
-    mediaUrls.value.push("");
+const topicOptions = computed<TopicSummary[]>(() => myTopics.value ?? []);
+const canAddMoreMedia = computed(() => uploadedMedia.value.length < MAX_MEDIA);
+const canSubmit = computed(() => content.value.trim().length > 0 && !isSubmitting.value && !isUploading.value);
+
+const openFilePicker = () => {
+  uploadError.value = null;
+  fileInput.value?.click();
+};
+
+const onFilesSelected = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  input.value = "";
+  if (!files.length) return;
+
+  const remaining = MAX_MEDIA - uploadedMedia.value.length;
+  if (remaining <= 0) {
+    uploadError.value = `最多只能上传${MAX_MEDIA}个文件`;
+    return;
+  }
+
+  const selected = files.slice(0, remaining);
+  if (files.length > remaining) {
+    uploadError.value = `最多只能上传${MAX_MEDIA}个文件`;
+  }
+
+  try {
+    isUploading.value = true;
+    const uploaded = await uploadMedia(selected);
+    uploadedMedia.value.push(...uploaded);
+  } catch (error: any) {
+    uploadError.value = error?.response?.data?.message ?? "上传失败，请重试";
+  } finally {
+    isUploading.value = false;
   }
 };
 
+const removeMedia = (index: number) => {
+  uploadedMedia.value.splice(index, 1);
+};
+
 const submit = async () => {
-  if (!content.value.trim()) return;
+  if (!canSubmit.value) return;
   try {
     isSubmitting.value = true;
     const payload = {
       content: content.value,
-      mediaUrls: mediaUrls.value.filter((url) => url.trim().length > 0),
+      mediaUrls: uploadedMedia.value.map((item) => item.url),
+      topicId: selectedTopicId.value,
     };
     const post = await feedStore.createPost(payload);
     emit("posted", post);
     content.value = "";
-    mediaUrls.value = [];
+    uploadedMedia.value = [];
+    uploadError.value = null;
+    if (selectedTopicId.value) {
+      void topicStore.fetchRankings(true);
+    }
   } finally {
     isSubmitting.value = false;
   }
 };
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    void topicStore.fetchMyTopics();
+  }
+});
+
+watch(
+  () => authStore.isAuthenticated,
+  (isLoggedIn) => {
+    if (isLoggedIn) {
+      void topicStore.fetchMyTopics(true);
+    } else {
+      topicStore.resetMyTopics();
+      selectedTopicId.value = null;
+    }
+  }
+);
+
+watch(topicOptions, (options) => {
+  if (!options.some((topic) => topic.id === selectedTopicId.value)) {
+    selectedTopicId.value = null;
+  }
+});
 </script>
 
 <style scoped>
@@ -77,7 +185,7 @@ const submit = async () => {
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .composer-header {
@@ -116,27 +224,122 @@ textarea:focus {
   border-color: rgba(99, 102, 241, 0.6);
 }
 
-.media-inputs {
+.composer-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1.25rem;
 }
 
-.media-inputs input {
-  border-radius: 0.75rem;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  padding: 0.75rem 1rem;
-  color: inherit;
+.media-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.link-add {
+.media-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #cbd5f5;
+}
+
+.media-counter {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.media-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.upload {
   align-self: flex-start;
   background: transparent;
   border: 1px dashed rgba(99, 102, 241, 0.7);
   border-radius: 999px;
   color: #c7d2fe;
-  padding: 0.4rem 1rem;
+  padding: 0.45rem 1.2rem;
+}
+
+.upload:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 0;
+  color: #fda4af;
+  font-size: 0.85rem;
+}
+
+.media-preview {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.media-item {
+  position: relative;
+  width: 140px;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.media-item img,
+.media-item video {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+}
+
+.media-item video {
+  background: #0f172a;
+}
+
+.media-item small {
+  padding: 0 0.5rem 0.5rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.topic-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.topic-selector label {
+  font-size: 0.9rem;
+  color: #cbd5f5;
+}
+
+.topic-selector select {
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0.6rem 0.75rem;
+  color: inherit;
 }
 
 .actions {

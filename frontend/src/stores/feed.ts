@@ -65,12 +65,17 @@ export const useFeedStore = defineStore("feed", {
       this.posts.unshift(post);
       useHotspotStore().syncPost(post);
     },
-    async createPost(payload: { content: string; mediaUrls: string[] }) {
+    async createPost(payload: { content: string; mediaUrls: string[]; topicId?: number | null }) {
       const authStore = useAuthStore();
       if (!authStore.isAuthenticated) {
         throw new Error("请先登录");
       }
-      const { data } = await api.post("/posts", payload);
+      const requestBody = {
+        content: payload.content,
+        mediaUrls: payload.mediaUrls,
+        topicId: payload.topicId ?? null,
+      };
+      const { data } = await api.post("/posts", requestBody);
       this.prepend(data);
       return data as TimelinePost;
     },

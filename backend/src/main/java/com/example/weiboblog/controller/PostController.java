@@ -47,7 +47,7 @@ public class PostController {
 
     @GetMapping("/hotspot/ranking")
     public ResponseEntity<List<PostResponse>> hotspotRanking(@AuthenticationPrincipal UserPrincipal currentUser,
-                                                              @RequestParam(defaultValue = "10") int size) {
+                                                              @RequestParam(defaultValue = "20") int size) {
         Long viewerId = currentUser != null ? currentUser.getId() : null;
         return ResponseEntity.ok(postService.getHotspotRanking(size, viewerId));
     }

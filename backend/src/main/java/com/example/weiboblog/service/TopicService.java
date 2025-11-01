@@ -5,6 +5,7 @@ import static com.example.weiboblog.service.HeatConstants.TOPIC_MEMBERSHIP_HEAT_
 import com.example.weiboblog.domain.Topic;
 import com.example.weiboblog.domain.TopicMember;
 import com.example.weiboblog.domain.User;
+import com.example.weiboblog.dto.AdminTopicCreateRequest;
 import com.example.weiboblog.dto.TopicCreateRequest;
 import com.example.weiboblog.dto.TopicResponse;
 import com.example.weiboblog.dto.TopicSummaryDto;
@@ -59,6 +60,28 @@ public class TopicService {
     }
 
     @Transactional
+    public TopicResponse createTopicByAdmin(Long adminId, AdminTopicCreateRequest request) {
+        String trimmedName = request.name().trim();
+        if (topicRepository.existsByNameIgnoreCase(trimmedName)) {
+            throw new BadRequestException("Topic name already exists");
+        }
+        User owner = userService.getById(adminId);
+        Topic topic = new Topic();
+        topic.setName(trimmedName);
+        topic.setDescription(normalize(request.description()));
+        topic.setOwner(owner);
+        topic.setHeat(Math.max(0, request.initialHeat()));
+        Topic saved = topicRepository.save(topic);
+
+        TopicMember member = new TopicMember();
+        member.setTopic(saved);
+        member.setMember(owner);
+        topicMemberRepository.save(member);
+        adjustTopicHeat(saved, TOPIC_MEMBERSHIP_HEAT_BONUS);
+        return toTopicResponse(saved, adminId);
+    }
+
+    @Transactional
     public TopicResponse joinTopic(Long userId, Long topicId) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found: " + topicId));
@@ -102,6 +125,17 @@ public class TopicService {
         return page.getContent().stream()
                 .map(topic -> toTopicSummary(topic, viewerId, false))
                 .toList();
+    }
+
+    @Transactional
+    public TopicResponse updateTopicHeat(Long topicId, long heat, Long viewerId) {
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found: " + topicId));
+        long target = Math.max(0, heat);
+        if (topic.getHeat() != target) {
+            topic.setHeat(target);
+        }
+        return toTopicResponse(topic, viewerId);
     }
 
     private TopicResponse toTopicResponse(Topic topic, Long viewerId) {

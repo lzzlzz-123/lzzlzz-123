@@ -13,6 +13,7 @@ export interface TimelinePost {
     username: string;
     displayName: string;
     avatarUrl?: string | null;
+    admin: boolean;
   };
   likeCount: number;
   commentCount: number;

@@ -1,6 +1,7 @@
 package com.example.weiboblog.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
@@ -30,7 +31,7 @@ public class Topic {
     private String description;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false, foreignKey = @ForeignKey(name = "fk_topics_owner"))
+    @JoinColumn(name = "owner_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private User owner;
 
     @Column(nullable = false)

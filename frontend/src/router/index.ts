@@ -6,6 +6,7 @@ import ProfileView from "@/views/ProfileView.vue";
 import PostDetailView from "@/views/PostDetailView.vue";
 import HotspotView from "@/views/HotspotView.vue";
 import TopicsView from "@/views/TopicsView.vue";
+import TopicDetailView from "@/views/TopicDetailView.vue";
 import AdminHotspotView from "@/views/AdminHotspotView.vue";
 import { useAuthStore } from "@/stores/auth";
 
@@ -26,6 +27,12 @@ const router = createRouter({
       path: "/topics",
       name: "topics",
       component: TopicsView,
+    },
+    {
+      path: "/topics/:id",
+      name: "topic-detail",
+      component: TopicDetailView,
+      props: true,
     },
     {
       path: "/admin/hotspot",

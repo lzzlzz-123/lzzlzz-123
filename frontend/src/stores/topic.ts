@@ -98,19 +98,19 @@ export const useTopicStore = defineStore("topic", {
       this.myTopicsLoaded = false;
       this.myTopicsError = null;
     },
-    async createTopic(payload: { name: string; description?: string | null }) {
+    async createTopic(payload: { name: string; description?: string | null }): Promise<TopicResponse> {
       const data = await apiCreateTopic(payload);
       const summary = toSummary(data);
       this.myTopics = updateCollection(this.myTopics, summary);
       this.updateRanking(summary);
-      return summary;
+      return data;
     },
-    async joinTopic(topicId: number) {
+    async joinTopic(topicId: number): Promise<TopicResponse> {
       const data = await apiJoinTopic(topicId);
       const summary = toSummary(data);
       this.myTopics = updateCollection(this.myTopics, summary);
       this.updateRanking(summary);
-      return summary;
+      return data;
     },
     async leaveTopic(topicId: number) {
       await apiLeaveTopic(topicId);

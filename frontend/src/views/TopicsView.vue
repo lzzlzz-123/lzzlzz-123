@@ -40,7 +40,9 @@
           <span class="rank" :class="{ top: index < 3 }">#{{ index + 1 }}</span>
           <div class="body">
             <div class="title">
-              <h3>{{ topic.name }}</h3>
+              <RouterLink :to="{ name: 'topic-detail', params: { id: topic.id } }" class="topic-link">
+                <h3>{{ topic.name }}</h3>
+              </RouterLink>
               <span class="heat">🔥 {{ topic.heat }}</span>
             </div>
             <p class="description">{{ topic.description ?? "这个话题还没有简介" }}</p>
@@ -74,7 +76,9 @@
         <li v-for="topic in myTopics" :key="topic.id">
           <div class="body">
             <div class="title">
-              <h3>{{ topic.name }}</h3>
+              <RouterLink :to="{ name: 'topic-detail', params: { id: topic.id } }" class="topic-link">
+                <h3>{{ topic.name }}</h3>
+              </RouterLink>
               <span class="heat">🔥 {{ topic.heat }}</span>
             </div>
             <p class="description">{{ topic.description ?? "这个话题还没有简介" }}</p>
@@ -93,6 +97,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { useTopicStore } from "@/stores/topic";
@@ -312,6 +317,15 @@ textarea {
 .title h3 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.topic-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.topic-link:hover h3 {
+  color: #c7d2fe;
 }
 
 .heat {

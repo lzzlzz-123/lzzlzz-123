@@ -4,15 +4,18 @@ import static com.example.weiboblog.service.HeatConstants.*;
 
 import com.example.weiboblog.domain.Post;
 import com.example.weiboblog.domain.PostLike;
+import com.example.weiboblog.domain.PostVisibility;
 import com.example.weiboblog.domain.Topic;
 import com.example.weiboblog.domain.User;
 import com.example.weiboblog.dto.HotspotPostCreateRequest;
 import com.example.weiboblog.dto.PagedResponse;
 import com.example.weiboblog.dto.PostCreateRequest;
 import com.example.weiboblog.dto.PostResponse;
+import com.example.weiboblog.dto.PostUpdateRequest;
 import com.example.weiboblog.dto.TopicLightDto;
 import com.example.weiboblog.dto.UserSummaryDto;
 import com.example.weiboblog.exception.BadRequestException;
+import com.example.weiboblog.exception.ForbiddenException;
 import com.example.weiboblog.exception.ResourceNotFoundException;
 import com.example.weiboblog.repository.CommentRepository;
 import com.example.weiboblog.repository.PostLikeRepository;
@@ -27,10 +30,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -44,6 +50,7 @@ public class PostService {
     private final TopicMemberRepository topicMemberRepository;
     private final TimelineService timelineService;
     private final UserService userService;
+    private final PrivacyService privacyService;
 
     public PostService(PostRepository postRepository,
                        PostLikeRepository postLikeRepository,
@@ -51,7 +58,8 @@ public class PostService {
                        TopicRepository topicRepository,
                        TopicMemberRepository topicMemberRepository,
                        TimelineService timelineService,
-                       UserService userService) {
+                       UserService userService,
+                       PrivacyService privacyService) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
         this.commentRepository = commentRepository;
@@ -59,6 +67,7 @@ public class PostService {
         this.topicMemberRepository = topicMemberRepository;
         this.timelineService = timelineService;
         this.userService = userService;
+        this.privacyService = privacyService;
     }
 
     @Transactional
@@ -77,6 +86,33 @@ public class PostService {
             return created;
         }
         return updateHeat(created.id(), request.initialHeat(), adminId);
+    }
+
+    @Transactional
+    public PostResponse updatePost(Long authorId, Long postId, PostUpdateRequest request) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+        if (!Objects.equals(post.getAuthor().getId(), authorId)) {
+            throw new ForbiddenException("无权修改该动态");
+        }
+        post.setContent(request.content());
+        applyVisibility(post, post.getAuthor(), request.visibility(), request.allowedUserIds());
+        return toPostResponse(post, authorId);
+    }
+
+    @Transactional
+    public void deletePost(Long authorId, Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+        if (!Objects.equals(post.getAuthor().getId(), authorId)) {
+            throw new ForbiddenException("无权删除该动态");
+        }
+        postRepository.delete(post);
+        timelineService.removePost(postId, authorId);
+        Topic topic = post.getTopic();
+        if (topic != null) {
+            adjustTopicHeat(topic, -TOPIC_POST_HEAT_BONUS);
+        }
     }
 
     private PostResponse createPostInternal(Long authorId, PostCreateRequest request, boolean requireTopicMembership) {
@@ -99,6 +135,8 @@ public class PostService {
             post.setTopic(topic);
         }
 
+        applyVisibility(post, author, request.visibility(), request.allowedUserIds());
+
         Post saved = postRepository.save(post);
         timelineService.cachePost(saved.getId(), author.getId(), saved.getCreatedAt());
         if (topic != null) {
@@ -111,21 +149,24 @@ public class PostService {
     public PostResponse getPost(Long postId, Long viewerId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+        privacyService.assertCanViewPost(post, viewerId);
         return toPostResponse(post, viewerId);
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<PostResponse> getGlobalFeed(int page, int size, Long viewerId) {
+        Set<Long> followeeIds = viewerId != null ? privacyService.loadFolloweeIds(viewerId) : Collections.emptySet();
         List<Long> cachedIds = timelineService.loadGlobalTimelineIds(page, size);
         if (cachedIds.isEmpty()) {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
             Page<Post> postPage = postRepository.findAllByOrderByCreatedAtDesc(pageable);
             List<PostResponse> content = postPage.getContent().stream()
+                    .filter(post -> privacyService.canViewPost(post, viewerId, followeeIds))
                     .map(post -> toPostResponse(post, viewerId))
                     .toList();
             return new PagedResponse<>(content, page, size, postPage.getTotalElements(), postPage.getTotalPages(), postPage.isLast());
         }
-        List<PostResponse> responses = postsFromIds(cachedIds, viewerId);
+        List<PostResponse> responses = postsFromIds(cachedIds, viewerId, followeeIds);
         long total = Math.max(postRepository.count(), cachedIds.size());
         int totalPages = (int) Math.ceil((double) total / size);
         boolean last = page + 1 >= totalPages;
@@ -134,16 +175,22 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public PagedResponse<PostResponse> getUserFeed(Long userId, int page, int size, Long viewerId) {
+        User owner = userService.getById(userId);
+        Set<Long> followeeIds = viewerId != null ? privacyService.loadFolloweeIds(viewerId) : Collections.emptySet();
+        if (!privacyService.canViewUser(owner, viewerId, followeeIds)) {
+            throw new ForbiddenException("该用户仅向授权用户开放动态");
+        }
         List<Long> cachedIds = timelineService.loadUserTimelineIds(userId, page, size);
         if (cachedIds.isEmpty()) {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
             Page<Post> postPage = postRepository.findAllByAuthorIdInOrderByCreatedAtDesc(List.of(userId), pageable);
             List<PostResponse> content = postPage.getContent().stream()
+                    .filter(post -> privacyService.canViewPost(post, viewerId, followeeIds))
                     .map(post -> toPostResponse(post, viewerId))
                     .toList();
             return new PagedResponse<>(content, page, size, postPage.getTotalElements(), postPage.getTotalPages(), postPage.isLast());
         }
-        List<PostResponse> responses = postsFromIds(cachedIds, viewerId);
+        List<PostResponse> responses = postsFromIds(cachedIds, viewerId, followeeIds);
         long total = postRepository.countByAuthorId(userId);
         int totalPages = (int) Math.ceil((double) Math.max(total, cachedIds.size()) / size);
         boolean last = page + 1 >= totalPages;
@@ -152,9 +199,11 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public PagedResponse<PostResponse> getHotspotFeed(int page, int size, Long viewerId) {
+        Set<Long> followeeIds = viewerId != null ? privacyService.loadFolloweeIds(viewerId) : Collections.emptySet();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("heat"), Sort.Order.desc("updatedAt")));
         Page<Post> postPage = postRepository.findByHeatGreaterThanEqual(HOTSPOT_THRESHOLD, pageable);
         List<PostResponse> content = postPage.getContent().stream()
+                .filter(post -> privacyService.canViewPost(post, viewerId, followeeIds))
                 .map(post -> toPostResponse(post, viewerId))
                 .toList();
         return new PagedResponse<>(content, page, size, postPage.getTotalElements(), postPage.getTotalPages(), postPage.isLast());
@@ -164,9 +213,11 @@ public class PostService {
     public PagedResponse<PostResponse> getTopicFeed(Long topicId, int page, int size, Long viewerId) {
         topicRepository.findById(topicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found: " + topicId));
+        Set<Long> followeeIds = viewerId != null ? privacyService.loadFolloweeIds(viewerId) : Collections.emptySet();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Post> postPage = postRepository.findByTopicIdOrderByCreatedAtDesc(topicId, pageable);
         List<PostResponse> content = postPage.getContent().stream()
+                .filter(post -> privacyService.canViewPost(post, viewerId, followeeIds))
                 .map(post -> toPostResponse(post, viewerId))
                 .toList();
         return new PagedResponse<>(content, page, size, postPage.getTotalElements(), postPage.getTotalPages(), postPage.isLast());
@@ -175,9 +226,11 @@ public class PostService {
     @Transactional(readOnly = true)
     public List<PostResponse> getHotspotRanking(int size, Long viewerId) {
         int limit = Math.max(1, Math.min(size, 20));
+        Set<Long> followeeIds = viewerId != null ? privacyService.loadFolloweeIds(viewerId) : Collections.emptySet();
         Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Order.desc("heat"), Sort.Order.desc("updatedAt")));
         Page<Post> postPage = postRepository.findByHeatGreaterThanEqual(HOTSPOT_THRESHOLD, pageable);
         return postPage.getContent().stream()
+                .filter(post -> privacyService.canViewPost(post, viewerId, followeeIds))
                 .map(post -> toPostResponse(post, viewerId))
                 .toList();
     }
@@ -202,6 +255,7 @@ public class PostService {
         }
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+        privacyService.assertCanInteractWithPost(post, userId);
         User user = userService.getById(userId);
         PostLike like = new PostLike();
         like.setPost(post);
@@ -215,17 +269,45 @@ public class PostService {
         postLikeRepository.findByPostIdAndUserId(postId, userId)
                 .ifPresent(like -> {
                     Post post = like.getPost();
+                    privacyService.assertCanInteractWithPost(post, userId);
                     postLikeRepository.delete(like);
                     adjustHeat(post, -LIKE_HEAT_WEIGHT);
                 });
     }
 
-    private List<PostResponse> postsFromIds(List<Long> ids, Long viewerId) {
+    private void applyVisibility(Post post, User author, PostVisibility requestedVisibility, List<Long> allowedUserIds) {
+        PostVisibility effective = requestedVisibility != null ? requestedVisibility : PostVisibility.fromPrivacySetting(author.getPrivacySetting());
+        post.setVisibility(effective);
+        if (effective == PostVisibility.CUSTOM) {
+            if (allowedUserIds == null || allowedUserIds.isEmpty()) {
+                throw new BadRequestException("请至少选择一位可见用户");
+            }
+            Set<Long> sanitized = allowedUserIds.stream()
+                    .filter(Objects::nonNull)
+                    .map(Long::valueOf)
+                    .collect(Collectors.toCollection(HashSet::new));
+            if (sanitized.isEmpty()) {
+                throw new BadRequestException("请至少选择一位可见用户");
+            }
+            if (sanitized.size() > 20) {
+                throw new BadRequestException("最多只能指定20位可见用户");
+            }
+            post.setAllowedUserIds(new HashSet<>(sanitized));
+        } else {
+            post.setAllowedUserIds(new HashSet<>());
+        }
+    }
+
+    private List<PostResponse> postsFromIds(List<Long> ids, Long viewerId, Set<Long> followeeIds) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
         List<Post> posts = postRepository.findAllById(ids);
         Map<Long, Post> byId = posts.stream().collect(Collectors.toMap(Post::getId, Function.identity()));
         return ids.stream()
                 .map(byId::get)
                 .filter(Objects::nonNull)
+                .filter(post -> privacyService.canViewPost(post, viewerId, followeeIds))
                 .sorted(Comparator.comparing(Post::getCreatedAt).reversed())
                 .map(post -> toPostResponse(post, viewerId))
                 .toList();
@@ -239,6 +321,10 @@ public class PostService {
         List<String> media = post.getMediaUrls() == null ? List.of() : List.copyOf(post.getMediaUrls());
         Topic topic = post.getTopic();
         TopicLightDto topicDto = topic == null ? null : new TopicLightDto(topic.getId(), topic.getName());
+        boolean ownedByCurrentUser = viewerId != null && Objects.equals(post.getAuthor().getId(), viewerId);
+        List<Long> allowedUserIds = ownedByCurrentUser
+                ? (post.getAllowedUserIds() == null ? List.of() : new ArrayList<>(post.getAllowedUserIds()))
+                : List.of();
         return new PostResponse(
                 post.getId(),
                 post.getContent(),
@@ -251,7 +337,10 @@ public class PostService {
                 commentCount,
                 post.getHeat(),
                 post.getHeat() >= HOTSPOT_THRESHOLD,
-                liked
+                liked,
+                ownedByCurrentUser,
+                post.getVisibility(),
+                allowedUserIds
         );
     }
 

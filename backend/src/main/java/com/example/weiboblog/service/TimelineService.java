@@ -33,6 +33,14 @@ public class TimelineService {
         trimTimeline(authorKey);
     }
 
+    public void removePost(Long postId, Long authorId) {
+        redisTemplate.opsForZSet().remove(GLOBAL_TIMELINE_KEY, postId);
+        if (authorId != null) {
+            String authorKey = USER_TIMELINE_PREFIX + authorId;
+            redisTemplate.opsForZSet().remove(authorKey, postId);
+        }
+    }
+
     public List<Long> loadGlobalTimelineIds(int page, int size) {
         return loadTimelineIds(GLOBAL_TIMELINE_KEY, page, size);
     }

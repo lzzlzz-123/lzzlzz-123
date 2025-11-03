@@ -1,3 +1,5 @@
+export type PostVisibility = "PUBLIC" | "FOLLOWERS_ONLY" | "PRIVATE" | "CUSTOM";
+
 export interface TimelinePost {
   id: number;
   content: string;
@@ -20,4 +22,7 @@ export interface TimelinePost {
   heat: number;
   inHotspot: boolean;
   likedByCurrentUser: boolean;
+  ownedByCurrentUser: boolean;
+  visibility: PostVisibility;
+  allowedUserIds: number[];
 }

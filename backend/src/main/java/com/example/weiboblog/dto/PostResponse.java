@@ -1,5 +1,7 @@
 package com.example.weiboblog.dto;
 
+import com.example.weiboblog.domain.PostVisibility;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -15,6 +17,9 @@ public record PostResponse(
         long commentCount,
         long heat,
         boolean inHotspot,
-        boolean likedByCurrentUser
+        boolean likedByCurrentUser,
+        boolean ownedByCurrentUser,
+        PostVisibility visibility,
+        List<Long> allowedUserIds
 ) {
 }

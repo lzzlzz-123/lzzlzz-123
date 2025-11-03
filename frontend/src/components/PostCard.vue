@@ -9,7 +9,14 @@
       <time>{{ formattedTime }}</time>
     </header>
     <p class="content">{{ post.content }}</p>
-    <span v-if="post.topic" class="topic-pill">#{{ post.topic.name }}</span>
+    <RouterLink
+      v-if="post.topic"
+      class="topic-pill"
+      :to="{ name: 'topic-detail', params: { id: post.topic.id } }"
+      @click.stop
+    >
+      #{{ post.topic.name }}
+    </RouterLink>
     <div v-if="post.mediaUrls?.length" class="media-grid">
       <div v-for="(url, index) in post.mediaUrls" :key="index" class="media-item">
         <video v-if="isVideo(url)" controls :src="url" @click.stop></video>

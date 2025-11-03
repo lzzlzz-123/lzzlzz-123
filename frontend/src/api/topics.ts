@@ -1,4 +1,6 @@
 import api from "@/api/client";
+import type { PagedResponse } from "@/types/pagination";
+import type { TimelinePost } from "@/types/post";
 import type { TopicResponse, TopicSummary } from "@/types/topic";
 
 export const fetchTopicRankings = async (size = 20): Promise<TopicSummary[]> => {
@@ -25,4 +27,20 @@ export const joinTopic = async (topicId: number): Promise<TopicResponse> => {
 
 export const leaveTopic = async (topicId: number): Promise<void> => {
   await api.delete(`/topics/${topicId}/join`);
+};
+
+export const fetchTopic = async (topicId: number): Promise<TopicResponse> => {
+  const { data } = await api.get<TopicResponse>(`/topics/${topicId}`);
+  return data;
+};
+
+export const fetchTopicPosts = async (
+  topicId: number,
+  page = 0,
+  size = 20
+): Promise<PagedResponse<TimelinePost>> => {
+  const { data } = await api.get<PagedResponse<TimelinePost>>(`/topics/${topicId}/posts`, {
+    params: { page, size },
+  });
+  return data;
 };

@@ -45,8 +45,13 @@
         </div>
       </div>
       <div v-if="topicOptions.length" class="topic-selector">
-        <label for="composer-topic">选择话题</label>
-        <select id="composer-topic" v-model="selectedTopicId">
+        <label v-if="isTopicLocked">关联话题</label>
+        <label v-else for="composer-topic">选择话题</label>
+        <div v-if="isTopicLocked" class="topic-lock-pill">
+          <span>#{{ topicOptions[0].name }}</span>
+          <small>🔥 {{ topicOptions[0].heat }}</small>
+        </div>
+        <select v-else id="composer-topic" v-model="selectedTopicId">
           <option :value="null">不关联话题</option>
           <option v-for="topic in topicOptions" :key="topic.id" :value="topic.id">
             {{ topic.name }} · 热度 {{ topic.heat }}
@@ -75,6 +80,10 @@ import type { TopicSummary } from "@/types/topic";
 
 const MAX_MEDIA = 4;
 
+const props = defineProps<{
+  lockedTopic?: TopicSummary | null;
+}>();
+
 const emit = defineEmits<["posted"]>();
 const authStore = useAuthStore();
 const feedStore = useFeedStore();
@@ -87,9 +96,15 @@ const isSubmitting = ref(false);
 const isUploading = ref(false);
 const uploadError = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
-const selectedTopicId = ref<number | null>(null);
+const selectedTopicId = ref<number | null>(props.lockedTopic?.id ?? null);
 
-const topicOptions = computed<TopicSummary[]>(() => myTopics.value ?? []);
+const isTopicLocked = computed(() => Boolean(props.lockedTopic));
+const topicOptions = computed<TopicSummary[]>(() => {
+  if (props.lockedTopic) {
+    return [props.lockedTopic];
+  }
+  return myTopics.value ?? [];
+});
 const canAddMoreMedia = computed(() => uploadedMedia.value.length < MAX_MEDIA);
 const canSubmit = computed(() => content.value.trim().length > 0 && !isSubmitting.value && !isUploading.value);
 
@@ -165,6 +180,19 @@ watch(
       void topicStore.fetchMyTopics(true);
     } else {
       topicStore.resetMyTopics();
+      if (!isTopicLocked.value) {
+        selectedTopicId.value = null;
+      }
+    }
+  }
+);
+
+watch(
+  () => props.lockedTopic,
+  (locked) => {
+    if (locked) {
+      selectedTopicId.value = locked.id;
+    } else if (!topicOptions.value.some((topic) => topic.id === selectedTopicId.value)) {
       selectedTopicId.value = null;
     }
   }
@@ -340,6 +368,23 @@ textarea:focus {
   border: 1px solid rgba(148, 163, 184, 0.2);
   padding: 0.6rem 0.75rem;
   color: inherit;
+}
+
+.topic-lock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  font-weight: 500;
+}
+
+.topic-lock-pill small {
+  font-size: 0.75rem;
+  color: #94a3b8;
 }
 
 .actions {

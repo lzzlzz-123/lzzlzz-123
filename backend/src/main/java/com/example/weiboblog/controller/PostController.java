@@ -3,6 +3,7 @@ package com.example.weiboblog.controller;
 import com.example.weiboblog.dto.PagedResponse;
 import com.example.weiboblog.dto.PostCreateRequest;
 import com.example.weiboblog.dto.PostResponse;
+import com.example.weiboblog.dto.PostUpdateRequest;
 import com.example.weiboblog.security.UserPrincipal;
 import com.example.weiboblog.service.PostService;
 import jakarta.validation.Valid;
@@ -72,6 +73,20 @@ public class PostController {
     public ResponseEntity<PostResponse> createPost(@AuthenticationPrincipal UserPrincipal currentUser,
                                                     @Valid @RequestBody PostCreateRequest request) {
         return ResponseEntity.ok(postService.createPost(currentUser.getId(), request));
+    }
+
+    @PutMapping("/{postId}")
+    public ResponseEntity<PostResponse> updatePost(@PathVariable Long postId,
+                                                    @AuthenticationPrincipal UserPrincipal currentUser,
+                                                    @Valid @RequestBody PostUpdateRequest request) {
+        return ResponseEntity.ok(postService.updatePost(currentUser.getId(), postId, request));
+    }
+
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<Void> deletePost(@PathVariable Long postId,
+                                           @AuthenticationPrincipal UserPrincipal currentUser) {
+        postService.deletePost(currentUser.getId(), postId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{postId}/like")

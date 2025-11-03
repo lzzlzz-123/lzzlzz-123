@@ -2,8 +2,10 @@ package com.example.weiboblog.service;
 
 import com.example.weiboblog.domain.Follow;
 import com.example.weiboblog.domain.User;
+import com.example.weiboblog.dto.UserConnectionsResponse;
 import com.example.weiboblog.dto.UserProfileResponse;
 import com.example.weiboblog.dto.UserProfileUpdateRequest;
+import com.example.weiboblog.dto.UserSummaryDto;
 import com.example.weiboblog.exception.BadRequestException;
 import com.example.weiboblog.exception.ResourceNotFoundException;
 import com.example.weiboblog.repository.FollowRepository;
@@ -11,6 +13,8 @@ import com.example.weiboblog.repository.PostRepository;
 import com.example.weiboblog.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class UserService {
@@ -51,6 +55,7 @@ public class UserService {
         user.setAvatarUrl(normalize(request.avatarUrl()));
         user.setSignature(normalize(request.signature()));
         user.setLocation(normalize(request.location()));
+        user.setPrivacySetting(request.privacySetting());
         userRepository.save(user);
         long followerCount = followRepository.countByFolloweeId(userId);
         long followingCount = followRepository.countByFollowerId(userId);
@@ -78,6 +83,18 @@ public class UserService {
     public void unfollow(Long followerId, Long followeeId) {
         followRepository.findByFollowerIdAndFolloweeId(followerId, followeeId)
                 .ifPresent(followRepository::delete);
+    }
+
+    @Transactional(readOnly = true)
+    public UserConnectionsResponse getConnections(Long userId) {
+        getById(userId);
+        List<UserSummaryDto> followers = followRepository.findFollowers(userId).stream()
+                .map(UserMapper::toSummary)
+                .toList();
+        List<UserSummaryDto> followees = followRepository.findFollowees(userId).stream()
+                .map(UserMapper::toSummary)
+                .toList();
+        return new UserConnectionsResponse(followers, followees);
     }
 
     private String normalize(String value) {

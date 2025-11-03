@@ -65,6 +65,21 @@ export const useFeedStore = defineStore("feed", {
       this.posts.unshift(post);
       useHotspotStore().syncPost(post);
     },
+    updatePost(updated: TimelinePost) {
+      const hotspotStore = useHotspotStore();
+      const existing = this.posts.find((post) => post.id === updated.id);
+      if (existing) {
+        Object.assign(existing, updated);
+      }
+      hotspotStore.syncPost(updated);
+    },
+    removePost(postId: number) {
+      const before = this.posts.length;
+      this.posts = this.posts.filter((post) => post.id !== postId);
+      if (this.posts.length !== before) {
+        useHotspotStore().removePost(postId);
+      }
+    },
     async createPost(payload: { content: string; mediaUrls: string[]; topicId?: number | null }) {
       const authStore = useAuthStore();
       if (!authStore.isAuthenticated) {

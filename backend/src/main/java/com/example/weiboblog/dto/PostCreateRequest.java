@@ -13,4 +13,7 @@ public record PostCreateRequest(
         PostVisibility visibility,
         @Size(max = 20) List<Long> allowedUserIds
 ) {
+    public PostCreateRequest(String content, List<String> mediaUrls, Long topicId) {
+        this(content, mediaUrls, topicId, null, null);
+    }
 }

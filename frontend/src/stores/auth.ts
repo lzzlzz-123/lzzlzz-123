@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import api, { setAuthToken } from "@/api/client";
+import { useConnectionsStore } from "@/stores/connections";
 
 export interface AuthUser {
   id: number;
@@ -86,6 +87,7 @@ export const useAuthStore = defineStore("auth", {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
       }
+      useConnectionsStore().reset();
     },
     async login(payload: { usernameOrEmail: string; password: string }) {
       this.status = "loading";

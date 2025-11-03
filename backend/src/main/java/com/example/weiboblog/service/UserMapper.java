@@ -27,6 +27,7 @@ public final class UserMapper {
                 user.getSignature(),
                 user.getLocation(),
                 user.getAvatarUrl(),
+                user.getPrivacySetting(),
                 user.getCreatedAt(),
                 followerCount,
                 followingCount,

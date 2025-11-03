@@ -1,6 +1,7 @@
 package com.example.weiboblog.controller;
 
 import com.example.weiboblog.domain.User;
+import com.example.weiboblog.dto.UserConnectionsResponse;
 import com.example.weiboblog.dto.UserProfileResponse;
 import com.example.weiboblog.dto.UserProfileUpdateRequest;
 import com.example.weiboblog.dto.UserSummaryDto;
@@ -33,6 +34,11 @@ public class UserController {
     public ResponseEntity<UserSummaryDto> currentUser(@AuthenticationPrincipal UserPrincipal currentUser) {
         User user = userService.getById(currentUser.getId());
         return ResponseEntity.ok(UserMapper.toSummary(user));
+    }
+
+    @GetMapping("/me/connections")
+    public ResponseEntity<UserConnectionsResponse> connections(@AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(userService.getConnections(currentUser.getId()));
     }
 
     @PutMapping("/me")

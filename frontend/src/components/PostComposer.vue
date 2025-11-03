@@ -73,9 +73,11 @@ import { computed, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { uploadMedia } from "@/api/media";
 import { useAuthStore } from "@/stores/auth";
+import { useConnectionsStore } from "@/stores/connections";
 import { useFeedStore } from "@/stores/feed";
 import { useTopicStore } from "@/stores/topic";
 import type { UploadedMedia } from "@/types/media";
+import type { PostVisibility } from "@/types/post";
 import type { TopicSummary } from "@/types/topic";
 
 const MAX_MEDIA = 4;

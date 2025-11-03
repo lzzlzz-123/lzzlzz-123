@@ -8,7 +8,14 @@
       </div>
       <time>{{ formattedTime }}</time>
     </header>
+
+    <div class="post-flags" v-if="visibilityBadge">
+      <span class="visibility" :class="visibilityClass">{{ visibilityBadge }}</span>
+      <span v-if="visibilityDetail" class="visibility-detail">{{ visibilityDetail }}</span>
+    </div>
+
     <p class="content">{{ post.content }}</p>
+
     <RouterLink
       v-if="post.topic"
       class="topic-pill"
@@ -17,12 +24,14 @@
     >
       #{{ post.topic.name }}
     </RouterLink>
+
     <div v-if="post.mediaUrls?.length" class="media-grid">
       <div v-for="(url, index) in post.mediaUrls" :key="index" class="media-item">
         <video v-if="isVideo(url)" controls :src="url" @click.stop></video>
         <img v-else :src="url" :alt="`media-${index}`" @click.stop />
       </div>
     </div>
+
     <footer>
       <button @click.stop="toggleLike">
         <span :class="{ liked: post.likedByCurrentUser }">♥</span>
@@ -36,6 +45,14 @@
         🔥 {{ post.heat }}
         <small v-if="post.inHotspot">热点</small>
       </span>
+      <div v-if="canManage" class="manage-actions">
+        <button type="button" class="ghost" :disabled="busy" @click.stop="emitEdit">
+          编辑
+        </button>
+        <button type="button" class="danger" :disabled="busy" @click.stop="emitDelete">
+          删除
+        </button>
+      </div>
     </footer>
   </article>
 </template>
@@ -46,7 +63,16 @@ import { useRouter, RouterLink } from "vue-router";
 import { useFeedStore } from "@/stores/feed";
 import type { TimelinePost } from "@/types/post";
 
-const props = defineProps<{ post: TimelinePost }>();
+const props = defineProps<{
+  post: TimelinePost;
+  busy?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (event: "edit", post: TimelinePost): void;
+  (event: "delete", post: TimelinePost): void;
+}>();
+
 const feedStore = useFeedStore();
 const router = useRouter();
 
@@ -55,10 +81,38 @@ const isVideo = (url: string) => {
   if (!url) return false;
   const clean = url.split(/[?#]/)[0];
   const extension = clean.split(".").pop()?.toLowerCase();
-  return extension ? VIDEO_EXTENSIONS.includes(extension as typeof VIDEO_EXTENSIONS[number]) : false;
+  return extension ? VIDEO_EXTENSIONS.includes(extension as (typeof VIDEO_EXTENSIONS)[number]) : false;
 };
 
 const formattedTime = computed(() => new Date(props.post.createdAt).toLocaleString());
+const canManage = computed(() => Boolean(props.post.ownedByCurrentUser));
+const busy = computed(() => Boolean(props.busy));
+
+const visibilityBadge = computed(() => {
+  switch (props.post.visibility) {
+    case "FOLLOWERS_ONLY":
+      return "粉丝可见";
+    case "PRIVATE":
+      return "仅自己可见";
+    case "CUSTOM":
+      return "指定人可见";
+    default:
+      return "";
+  }
+});
+
+const visibilityClass = computed(() => {
+  const visibility = props.post.visibility?.toLowerCase?.();
+  return visibility ? `visibility-${visibility}` : "";
+});
+
+const visibilityDetail = computed(() => {
+  if (props.post.visibility !== "CUSTOM") {
+    return "";
+  }
+  const count = props.post.allowedUserIds?.length ?? 0;
+  return count > 0 ? `已指定 ${count} 人可见` : "";
+});
 
 const toggleLike = async () => {
   await feedStore.toggleLike(props.post.id, props.post);
@@ -66,6 +120,14 @@ const toggleLike = async () => {
 
 const openDetail = () => {
   router.push({ name: "post", params: { id: props.post.id } });
+};
+
+const emitEdit = () => {
+  emit("edit", props.post);
+};
+
+const emitDelete = () => {
+  emit("delete", props.post);
 };
 </script>
 
@@ -114,6 +176,43 @@ time {
   margin-left: auto;
   color: #94a3b8;
   font-size: 0.85rem;
+}
+
+.post-flags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.visibility {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+.visibility-followers_only {
+  background: rgba(59, 130, 246, 0.2);
+  color: #bfdbfe;
+}
+
+.visibility-private {
+  background: rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+
+.visibility-custom {
+  background: rgba(124, 58, 237, 0.25);
+  color: #ddd6fe;
+}
+
+.visibility-detail {
+  font-size: 0.75rem;
+  color: #94a3b8;
 }
 
 .content {
@@ -204,5 +303,34 @@ footer button span.liked {
   background: rgba(249, 115, 22, 0.2);
   font-size: 0.7rem;
   color: inherit;
+}
+
+.manage-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  margin-left: 0.75rem;
+}
+
+.manage-actions .ghost {
+  border-radius: 999px;
+  padding: 0.2rem 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+  background: transparent;
+  font-size: 0.85rem;
+}
+
+.manage-actions .danger {
+  border-radius: 999px;
+  padding: 0.2rem 0.8rem;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.15);
+  font-size: 0.85rem;
+}
+
+.manage-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

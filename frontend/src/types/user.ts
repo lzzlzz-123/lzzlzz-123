@@ -8,6 +8,23 @@ export interface UserSummary {
   admin: boolean;
 }
 
+export interface UserProfile {
+  id: number;
+  username: string;
+  displayName: string;
+  email: string;
+  bio?: string | null;
+  signature?: string | null;
+  location?: string | null;
+  avatarUrl?: string | null;
+  privacySetting: PrivacySetting;
+  createdAt: string;
+  followerCount: number;
+  followingCount: number;
+  postCount: number;
+  followedByCurrentUser: boolean;
+}
+
 export interface UserConnections {
   followers: UserSummary[];
   followees: UserSummary[];

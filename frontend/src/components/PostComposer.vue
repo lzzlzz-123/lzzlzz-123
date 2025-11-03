@@ -44,6 +44,7 @@
           </div>
         </div>
       </div>
+
       <div v-if="topicOptions.length" class="topic-selector">
         <label v-if="isTopicLocked">关联话题</label>
         <label v-else for="composer-topic">选择话题</label>
@@ -58,6 +59,15 @@
           </option>
         </select>
       </div>
+
+      <div class="privacy-section">
+        <h4>可见范围</h4>
+        <PostVisibilityControl
+          v-model="visibility"
+          v-model:allowedUserIds="allowedUserIds"
+          :connections="availableConnections"
+        />
+      </div>
     </div>
     <div class="actions">
       <span>{{ content.length }}/500</span>
@@ -71,6 +81,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import PostVisibilityControl from "@/components/PostVisibilityControl.vue";
 import { uploadMedia } from "@/api/media";
 import { useAuthStore } from "@/stores/auth";
 import { useConnectionsStore } from "@/stores/connections";
@@ -78,6 +89,7 @@ import { useFeedStore } from "@/stores/feed";
 import { useTopicStore } from "@/stores/topic";
 import type { UploadedMedia } from "@/types/media";
 import type { PostVisibility } from "@/types/post";
+import type { UserSummary } from "@/types/user";
 import type { TopicSummary } from "@/types/topic";
 
 const MAX_MEDIA = 4;
@@ -90,7 +102,9 @@ const emit = defineEmits<["posted"]>();
 const authStore = useAuthStore();
 const feedStore = useFeedStore();
 const topicStore = useTopicStore();
+const connectionsStore = useConnectionsStore();
 const { myTopics } = storeToRefs(topicStore);
+const { followers, followees } = storeToRefs(connectionsStore);
 
 const content = ref("");
 const uploadedMedia = ref<UploadedMedia[]>([]);
@@ -99,6 +113,8 @@ const isUploading = ref(false);
 const uploadError = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedTopicId = ref<number | null>(props.lockedTopic?.id ?? null);
+const visibility = ref<PostVisibility>("PUBLIC");
+const allowedUserIds = ref<number[]>([]);
 
 const isTopicLocked = computed(() => Boolean(props.lockedTopic));
 const topicOptions = computed<TopicSummary[]>(() => {
@@ -107,8 +123,41 @@ const topicOptions = computed<TopicSummary[]>(() => {
   }
   return myTopics.value ?? [];
 });
+
+const availableConnections = computed<UserSummary[]>(() => {
+  const map = new Map<number, UserSummary>();
+  [...followers.value, ...followees.value].forEach((user) => {
+    const numeric = Number(user.id);
+    if (!Number.isFinite(numeric)) {
+      return;
+    }
+    if (authStore.user?.id && authStore.user.id === numeric) {
+      return;
+    }
+    if (!map.has(numeric)) {
+      map.set(numeric, { ...user, id: numeric });
+    }
+  });
+  return Array.from(map.values());
+});
+
+const ensureConnectionsLoaded = async () => {
+  if (!authStore.isAuthenticated) return;
+  if (connectionsStore.loaded || connectionsStore.status === "loading") return;
+  try {
+    await connectionsStore.fetch();
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 const canAddMoreMedia = computed(() => uploadedMedia.value.length < MAX_MEDIA);
-const canSubmit = computed(() => content.value.trim().length > 0 && !isSubmitting.value && !isUploading.value);
+const canSubmit = computed(() => {
+  if (isSubmitting.value || isUploading.value) return false;
+  if (!content.value.trim()) return false;
+  if (visibility.value === "CUSTOM" && allowedUserIds.value.length === 0) return false;
+  return true;
+});
 
 const openFilePicker = () => {
   uploadError.value = null;
@@ -155,6 +204,8 @@ const submit = async () => {
       content: content.value,
       mediaUrls: uploadedMedia.value.map((item) => item.url),
       topicId: selectedTopicId.value,
+      visibility: visibility.value,
+      allowedUserIds: visibility.value === "CUSTOM" ? allowedUserIds.value : [],
     };
     const post = await feedStore.createPost(payload);
     emit("posted", post);
@@ -180,8 +231,13 @@ watch(
   (isLoggedIn) => {
     if (isLoggedIn) {
       void topicStore.fetchMyTopics(true);
+      if (visibility.value === "CUSTOM") {
+        void ensureConnectionsLoaded();
+      }
     } else {
       topicStore.resetMyTopics();
+      connectionsStore.reset();
+      allowedUserIds.value = [];
       if (!isTopicLocked.value) {
         selectedTopicId.value = null;
       }
@@ -203,6 +259,12 @@ watch(
 watch(topicOptions, (options) => {
   if (!options.some((topic) => topic.id === selectedTopicId.value)) {
     selectedTopicId.value = null;
+  }
+});
+
+watch(visibility, (value) => {
+  if (value === "CUSTOM") {
+    void ensureConnectionsLoaded();
   }
 });
 </script>
@@ -387,6 +449,18 @@ textarea:focus {
 .topic-lock-pill small {
   font-size: 0.75rem;
   color: #94a3b8;
+}
+
+.privacy-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.privacy-section h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #cbd5f5;
 }
 
 .actions {

@@ -1,6 +1,8 @@
 package com.example.weiboblog.dto;
 
+import com.example.weiboblog.domain.PrivacySetting;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record UserProfileUpdateRequest(
@@ -18,6 +20,9 @@ public record UserProfileUpdateRequest(
         String signature,
 
         @Size(max = 120)
-        String location
+        String location,
+
+        @NotNull
+        PrivacySetting privacySetting
 ) {
 }

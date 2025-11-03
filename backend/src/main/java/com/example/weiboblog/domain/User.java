@@ -2,6 +2,8 @@ package com.example.weiboblog.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,6 +44,10 @@ public class User {
 
     @Column(length = 255)
     private String avatarUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "privacy_setting", nullable = false, length = 32)
+    private PrivacySetting privacySetting = PrivacySetting.PUBLIC;
 
     @Column(name = "is_admin", nullable = false)
     private boolean admin;
@@ -136,6 +142,14 @@ public class User {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public PrivacySetting getPrivacySetting() {
+        return privacySetting;
+    }
+
+    public void setPrivacySetting(PrivacySetting privacySetting) {
+        this.privacySetting = privacySetting;
     }
 
     public boolean isAdmin() {

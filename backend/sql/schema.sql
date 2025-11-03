@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     signature VARCHAR(280),
     location VARCHAR(120),
     avatar_url VARCHAR(255),
+    privacy_setting VARCHAR(32) NOT NULL DEFAULT 'PUBLIC',
     is_admin TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -71,6 +72,7 @@ CREATE TABLE IF NOT EXISTS posts (
     author_id BIGINT NOT NULL,
     topic_id BIGINT NULL,
     content VARCHAR(500) NOT NULL,
+    visibility VARCHAR(32) NOT NULL DEFAULT 'PUBLIC',
     heat BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -90,6 +92,19 @@ CREATE TABLE IF NOT EXISTS post_media (
     post_id BIGINT NOT NULL,
     media_url VARCHAR(255) NOT NULL,
     KEY idx_post_media_post_id (post_id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- Table `post_visibility_allow`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS post_visibility_allow (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    allowed_user_id BIGINT NOT NULL,
+    KEY idx_post_visibility_post_id (post_id),
+    KEY idx_post_visibility_user_id (allowed_user_id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;

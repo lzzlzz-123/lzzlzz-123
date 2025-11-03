@@ -1,5 +1,7 @@
 package com.example.weiboblog.dto;
 
+import com.example.weiboblog.domain.PrivacySetting;
+
 import java.time.OffsetDateTime;
 
 public record UserProfileResponse(
@@ -11,6 +13,7 @@ public record UserProfileResponse(
         String signature,
         String location,
         String avatarUrl,
+        PrivacySetting privacySetting,
         OffsetDateTime createdAt,
         long followerCount,
         long followingCount,

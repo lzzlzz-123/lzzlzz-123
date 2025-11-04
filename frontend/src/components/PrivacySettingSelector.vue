@@ -33,6 +33,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: "update:modelValue", value: PrivacySetting): void;
+  (event: "select", value: PrivacySetting): void;
 }>();
 
 const options: Option[] = [
@@ -42,6 +43,7 @@ const options: Option[] = [
 ];
 
 const onSelect = (value: PrivacySetting) => {
+  emit("select", value);
   if (value !== props.modelValue) {
     emit("update:modelValue", value);
   }

@@ -77,6 +77,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: "update:modelValue", value: PostVisibility): void;
   (event: "update:allowedUserIds", value: number[]): void;
+  (event: "select", value: PostVisibility): void;
 }>();
 
 const options: VisibilityOption[] = [
@@ -121,6 +122,7 @@ const uniqueConnections = computed(() => {
 });
 
 const onVisibilityChange = (value: PostVisibility) => {
+  emit("select", value);
   if (value !== props.modelValue) {
     emit("update:modelValue", value);
   }

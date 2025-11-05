@@ -8,6 +8,7 @@ import HotspotView from "@/views/HotspotView.vue";
 import TopicsView from "@/views/TopicsView.vue";
 import TopicDetailView from "@/views/TopicDetailView.vue";
 import AdminHotspotView from "@/views/AdminHotspotView.vue";
+import AdminHomeAdsView from "@/views/AdminHomeAdsView.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const router = createRouter({
@@ -38,6 +39,12 @@ const router = createRouter({
       path: "/admin/hotspot",
       name: "admin-hotspot",
       component: AdminHotspotView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: "/admin/home-ads",
+      name: "admin-home-ads",
+      component: AdminHomeAdsView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {

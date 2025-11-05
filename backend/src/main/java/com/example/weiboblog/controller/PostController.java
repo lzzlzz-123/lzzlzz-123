@@ -53,6 +53,14 @@ public class PostController {
         return ResponseEntity.ok(postService.getHotspotRanking(size, viewerId));
     }
 
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<PostResponse>> recommendations(@AuthenticationPrincipal UserPrincipal currentUser,
+                                                               @RequestParam(defaultValue = "3") int size,
+                                                               @RequestParam(value = "exclude", required = false) List<Long> exclude) {
+        Long viewerId = currentUser != null ? currentUser.getId() : null;
+        return ResponseEntity.ok(postService.getRecommendations(size, viewerId, exclude));
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<PagedResponse<PostResponse>> userFeed(@PathVariable Long userId,
                                                                  @AuthenticationPrincipal UserPrincipal currentUser,

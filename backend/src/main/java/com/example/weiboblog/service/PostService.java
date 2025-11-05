@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +53,9 @@ public class PostService {
     private final TimelineService timelineService;
     private final UserService userService;
     private final PrivacyService privacyService;
+
+    private static final int MAX_RECOMMENDATION_SIZE = 6;
+    private static final int MAX_EXCLUDE_SIZE = 200;
 
     public PostService(PostRepository postRepository,
                        PostLikeRepository postLikeRepository,
@@ -235,6 +240,36 @@ public class PostService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PostResponse> getRecommendations(int size, Long viewerId, List<Long> excludedIds) {
+        int limit = Math.max(1, Math.min(size, MAX_RECOMMENDATION_SIZE));
+        Set<Long> followeeIds = viewerId != null ? privacyService.loadFolloweeIds(viewerId) : Collections.emptySet();
+        LinkedHashSet<Long> seen = sanitizeExcludeIds(excludedIds);
+        List<PostResponse> recommendations = new ArrayList<>(limit);
+        int candidateSize = Math.max(limit * 4, 60);
+
+        collectRecommendations(recommendations, seen, followeeIds, viewerId,
+                PageRequest.of(0, candidateSize, Sort.by(Sort.Order.desc("heat"), Sort.Order.desc("updatedAt"))),
+                limit);
+
+        if (recommendations.size() < limit) {
+            collectRecommendations(recommendations, seen, followeeIds, viewerId,
+                    PageRequest.of(0, candidateSize, Sort.by(Sort.Order.desc("createdAt"))),
+                    limit);
+        }
+
+        if (recommendations.size() < limit) {
+            collectRecommendations(recommendations, seen, followeeIds, viewerId,
+                    PageRequest.of(0, candidateSize, Sort.by(Sort.Order.desc("id"))),
+                    limit);
+        }
+
+        if (recommendations.size() > limit) {
+            return List.copyOf(recommendations.subList(0, limit));
+        }
+        return List.copyOf(recommendations);
+    }
+
     @Transactional
     public PostResponse updateHeat(Long postId, long heat, Long viewerId) {
         long targetHeat = Math.max(0, heat);
@@ -273,6 +308,72 @@ public class PostService {
                     postLikeRepository.delete(like);
                     adjustHeat(post, -LIKE_HEAT_WEIGHT);
                 });
+    }
+
+    private void collectRecommendations(List<PostResponse> sink,
+                                        LinkedHashSet<Long> seen,
+                                        Set<Long> followeeIds,
+                                        Long viewerId,
+                                        Pageable pageable,
+                                        int limit) {
+        if (sink.size() >= limit) {
+            return;
+        }
+        Page<Post> page = postRepository.findAll(pageable);
+        for (Post post : page.getContent()) {
+            if (post == null || post.getId() == null) {
+                continue;
+            }
+            if (sink.size() >= limit) {
+                break;
+            }
+            Long postId = post.getId();
+            if (seen.contains(postId)) {
+                continue;
+            }
+            if (viewerId != null) {
+                User author = post.getAuthor();
+                if (author != null && Objects.equals(author.getId(), viewerId)) {
+                    continue;
+                }
+            }
+            if (!privacyService.canViewPost(post, viewerId, followeeIds)) {
+                continue;
+            }
+            sink.add(toPostResponse(post, viewerId));
+            rememberSeen(seen, postId);
+        }
+    }
+
+    private void rememberSeen(LinkedHashSet<Long> seen, Long id) {
+        if (id == null || seen.contains(id)) {
+            return;
+        }
+        if (seen.size() >= MAX_EXCLUDE_SIZE) {
+            Iterator<Long> iterator = seen.iterator();
+            if (iterator.hasNext()) {
+                iterator.next();
+                iterator.remove();
+            }
+        }
+        seen.add(id);
+    }
+
+    private LinkedHashSet<Long> sanitizeExcludeIds(List<Long> values) {
+        LinkedHashSet<Long> sanitized = new LinkedHashSet<>();
+        if (values == null) {
+            return sanitized;
+        }
+        for (Long value : values) {
+            if (value == null) {
+                continue;
+            }
+            sanitized.add(value);
+            if (sanitized.size() >= MAX_EXCLUDE_SIZE) {
+                break;
+            }
+        }
+        return sanitized;
     }
 
     private void applyVisibility(Post post, User author, PostVisibility requestedVisibility, List<Long> allowedUserIds) {

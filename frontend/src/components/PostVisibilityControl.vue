@@ -5,10 +5,10 @@
         <input
           type="radio"
           class="radio"
-          name="post-visibility"
+          :name="radioGroupName"
           :value="option.value"
           :checked="option.value === modelValue"
-          @change="onVisibilityChange(option.value)"
+          @change="selectVisibility(option.value)"
         />
         <div class="copy">
           <strong>{{ option.label }}</strong>
@@ -18,7 +18,7 @@
       </label>
     </div>
 
-    <div v-if="modelValue === 'CUSTOM'" class="custom" aria-live="polite">
+    <div v-if="isCustomVisibility" class="custom" aria-live="polite">
       <p class="hint">
         请选择可以查看该动态的联系人（已选 {{ allowedCount }}/{{ maxAllowed }} ）
       </p>
@@ -27,13 +27,13 @@
           v-for="user in uniqueConnections"
           :key="user.id"
           class="user-option"
-          :class="{ selected: selectedSet.has(user.id) }"
+          :class="{ selected: allowedSet.has(user.id) }"
         >
           <input
             type="checkbox"
             class="checkbox"
             :value="user.id"
-            :checked="selectedSet.has(user.id)"
+            :checked="allowedSet.has(user.id)"
             @change="toggleAllowed(user.id)"
           />
           <div class="user-meta">
@@ -41,7 +41,7 @@
               <img :src="user.avatarUrl" :alt="user.displayName" />
             </div>
             <div class="avatar fallback" v-else>
-              {{ user.displayName.slice(0, 1) || user.username.slice(0, 1) || "?" }}
+              {{ getInitial(user) }}
             </div>
             <div class="text">
               <strong>{{ user.displayName }}</strong>
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import type { PostVisibility } from "@/types/post";
 import type { UserSummary } from "@/types/user";
 
@@ -66,6 +66,16 @@ type VisibilityOption = {
   label: string;
   description: string;
 };
+
+const VISIBILITY_OPTIONS: VisibilityOption[] = [
+  { value: "PUBLIC", label: "公开", description: "任何人都可以看到这条动态" },
+  { value: "FOLLOWERS_ONLY", label: "仅粉丝可见", description: "只有你的粉丝可以看到" },
+  { value: "PRIVATE", label: "仅自己可见", description: "除你之外无人可见" },
+  { value: "CUSTOM", label: "指定人可见", description: "只向选中的联系人开放" },
+];
+
+let controlSeed = 0;
+const nextGroupName = () => `post-visibility-${++controlSeed}`;
 
 const props = defineProps<{
   modelValue: PostVisibility;
@@ -79,20 +89,41 @@ const emit = defineEmits<{
   (event: "update:allowedUserIds", value: number[]): void;
 }>();
 
-const options: VisibilityOption[] = [
-  { value: "PUBLIC", label: "公开", description: "任何人都可以看到这条动态" },
-  { value: "FOLLOWERS_ONLY", label: "仅粉丝可见", description: "只有你的粉丝可以看到" },
-  { value: "PRIVATE", label: "仅自己可见", description: "除你之外无人可见" },
-  { value: "CUSTOM", label: "指定人可见", description: "只向选中的联系人开放" },
-];
-
+const radioGroupName = nextGroupName();
 const selectionError = ref<string | null>(null);
-const maxAllowed = computed(() => Math.max(1, props.maxAllowed ?? 20));
 
-const sanitizedAllowedIds = computed(() => {
+const maxAllowed = computed(() => {
+  const fallback = 20;
+  const numeric = Number(props.maxAllowed);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.max(1, Math.trunc(numeric));
+});
+
+const options = VISIBILITY_OPTIONS;
+const isCustomVisibility = computed(() => props.modelValue === "CUSTOM");
+
+const uniqueConnections = computed<UserSummary[]>(() => {
+  const map = new Map<number, UserSummary>();
+  props.connections.forEach((user) => {
+    if (!user) return;
+    const numericId = Number(user.id);
+    if (!Number.isFinite(numericId) || map.has(numericId)) {
+      return;
+    }
+    map.set(numericId, {
+      ...user,
+      id: numericId,
+    });
+  });
+  return Array.from(map.values());
+});
+
+const sanitizedAllowedIds = computed<number[]>(() => {
   const unique = new Set<number>();
   props.allowedUserIds.forEach((value) => {
-    const numeric = typeof value === "number" ? value : Number(value);
+    const numeric = Number(value);
     if (Number.isFinite(numeric)) {
       unique.add(numeric);
     }
@@ -100,32 +131,15 @@ const sanitizedAllowedIds = computed(() => {
   return Array.from(unique.values());
 });
 
-const selectedSet = computed(() => new Set<number>(sanitizedAllowedIds.value));
+const allowedSet = computed(() => new Set<number>(sanitizedAllowedIds.value));
 const allowedCount = computed(() => sanitizedAllowedIds.value.length);
 
-const uniqueConnections = computed(() => {
-  const map = new Map<number, UserSummary>();
-  props.connections.forEach((user) => {
-    const numeric = Number(user?.id);
-    if (!Number.isFinite(numeric)) {
-      return;
-    }
-    if (!map.has(numeric)) {
-      map.set(numeric, {
-        ...user,
-        id: numeric,
-      });
-    }
-  });
-  return Array.from(map.values());
-});
-
-const onVisibilityChange = (value: PostVisibility) => {
-  if (value !== props.modelValue) {
-    emit("update:modelValue", value);
+const selectVisibility = (value: PostVisibility) => {
+  if (value === props.modelValue) {
+    return;
   }
-  if (value !== "CUSTOM" && sanitizedAllowedIds.value.length) {
-    emit("update:allowedUserIds", []);
+  emit("update:modelValue", value);
+  if (value !== "CUSTOM") {
     selectionError.value = null;
   }
 };
@@ -136,18 +150,50 @@ const toggleAllowed = (userId: number) => {
   if (!Number.isFinite(numeric)) {
     return;
   }
-  const current = new Set<number>(sanitizedAllowedIds.value);
-  if (current.has(numeric)) {
-    current.delete(numeric);
+  const next = new Set(allowedSet.value);
+  if (next.has(numeric)) {
+    next.delete(numeric);
   } else {
-    if (current.size >= maxAllowed.value) {
+    if (next.size >= maxAllowed.value) {
       selectionError.value = `最多可以选择 ${maxAllowed.value} 位联系人`;
       return;
     }
-    current.add(numeric);
+    next.add(numeric);
   }
-  emit("update:allowedUserIds", Array.from(current.values()));
+  emit("update:allowedUserIds", Array.from(next.values()));
 };
+
+const getInitial = (user: UserSummary) => {
+  const display = (user.displayName || "").trim();
+  if (display) {
+    return display.charAt(0);
+  }
+  const username = (user.username || "").trim();
+  if (username) {
+    return username.charAt(0);
+  }
+  return "?";
+};
+
+watch(
+  () => [props.modelValue, sanitizedAllowedIds.value, maxAllowed.value] as const,
+  ([visibility, ids, limit]) => {
+    if (visibility !== "CUSTOM") {
+      if (ids.length) {
+        emit("update:allowedUserIds", []);
+      }
+      selectionError.value = null;
+      return;
+    }
+    if (ids.length > limit) {
+      emit("update:allowedUserIds", ids.slice(0, limit));
+      selectionError.value = `最多可以选择 ${limit} 位联系人`;
+    } else {
+      selectionError.value = null;
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

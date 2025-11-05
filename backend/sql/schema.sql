@@ -140,6 +140,24 @@ CREATE TABLE IF NOT EXISTS post_likes (
   COLLATE = utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------
+-- Table `home_ads`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS home_ads (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(120) NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    target_url VARCHAR(255) NOT NULL,
+    display_order INT NOT NULL DEFAULT 0,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    KEY idx_home_ads_display_order (display_order),
+    KEY idx_home_ads_active_order (active, display_order)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
 -- Table `follows`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS follows (

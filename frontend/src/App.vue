@@ -10,6 +10,7 @@
         <RouterLink to="/hotspot">热点聚焦</RouterLink>
         <RouterLink to="/topics">话题</RouterLink>
         <RouterLink v-if="authStore.user?.admin" to="/admin/hotspot">热点管理</RouterLink>
+        <RouterLink v-if="authStore.user?.admin" to="/admin/home-ads">广告管理</RouterLink>
         <RouterLink v-if="!authStore.isAuthenticated" to="/login">登录</RouterLink>
         <RouterLink v-if="!authStore.isAuthenticated" to="/register">注册</RouterLink>
         <RouterLink v-if="authStore.isAuthenticated" :to="`/profile/${authStore.user?.id}`">我的主页</RouterLink>

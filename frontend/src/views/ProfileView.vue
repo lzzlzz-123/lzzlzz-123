@@ -56,35 +56,39 @@
         <div class="form-row avatar-row">
           <label for="profile-avatar">头像</label>
           <div class="avatar-field">
-            <input
-              id="profile-avatar"
-              v-model="form.avatarUrl"
-              type="url"
-              maxlength="255"
-              placeholder="https://example.com/avatar.png"
-            />
-            <div class="avatar-actions">
-              <button type="button" @click="pickAvatarFile" :disabled="avatarUploading">
-                {{ avatarUploading ? "上传中..." : "本地上传" }}
-              </button>
-              <button
-                v-if="form.avatarUrl"
-                type="button"
-                class="ghost"
-                @click="clearAvatar"
-                :disabled="avatarUploading"
-              >
-                清除
-              </button>
+            <div class="image-upload-group">
+              <div class="avatar-actions">
+                <button type="button" class="upload-button" @click="pickAvatarFile" :disabled="avatarUpload.uploading">
+                  {{ avatarUpload.uploading ? "上传中..." : form.avatarUrl ? "重新上传图片" : "上传图片" }}
+                </button>
+                <button
+                  v-if="form.avatarUrl"
+                  type="button"
+                  class="ghost"
+                  @click="clearAvatar"
+                  :disabled="avatarUpload.uploading"
+                >
+                  清除
+                </button>
+                <input
+                  ref="avatarFileInput"
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  @change="onAvatarFileSelected"
+                />
+              </div>
+              <span v-if="avatarUpload.fileName" class="upload-info">{{ avatarUpload.fileName }}</span>
               <input
-                ref="avatarFileInput"
-                type="file"
-                accept="image/*"
-                hidden
-                @change="onAvatarFileSelected"
+                id="profile-avatar"
+                v-model="form.avatarUrl"
+                type="url"
+                maxlength="255"
+                placeholder="https://example.com/avatar.png"
+                @input="onAvatarUrlInput"
               />
             </div>
-            <p v-if="avatarUploadError" class="form-hint error">{{ avatarUploadError }}</p>
+            <p v-if="avatarUpload.error" class="form-hint error">{{ avatarUpload.error }}</p>
             <div v-if="form.avatarUrl" class="avatar-preview">
               <img :src="form.avatarUrl" alt="avatar preview" />
             </div>
@@ -205,8 +209,19 @@ const isEditing = ref(false);
 const updatingProfile = ref(false);
 const formError = ref<string | null>(null);
 const avatarFileInput = ref<HTMLInputElement | null>(null);
-const avatarUploading = ref(false);
-const avatarUploadError = ref<string | null>(null);
+
+interface AvatarUploadState {
+  uploading: boolean;
+  error: string | null;
+  fileName: string | null;
+}
+
+const avatarUpload = reactive<AvatarUploadState>({
+  uploading: false,
+  error: null,
+  fileName: null,
+});
+
 const managingPost = ref<TimelinePost | null>(null);
 const postFormError = ref<string | null>(null);
 const updatingPost = ref(false);
@@ -338,15 +353,27 @@ const fillForm = (value: UserProfile) => {
   form.signature = value.signature ?? "";
   form.location = value.location ?? "";
   form.privacySetting = value.privacySetting ?? "PUBLIC";
+  avatarUpload.fileName = null;
+  avatarUpload.error = null;
+  avatarUpload.uploading = false;
+  if (avatarFileInput.value) {
+    avatarFileInput.value.value = "";
+  }
 };
 
 const pickAvatarFile = () => {
-  avatarUploadError.value = null;
+  if (avatarUpload.uploading) return;
+  avatarUpload.error = null;
   avatarFileInput.value?.click();
 };
 
 const clearAvatar = () => {
   form.avatarUrl = "";
+  avatarUpload.fileName = null;
+  avatarUpload.error = null;
+  if (avatarFileInput.value) {
+    avatarFileInput.value.value = "";
+  }
 };
 
 const onAvatarFileSelected = async (event: Event) => {
@@ -354,28 +381,43 @@ const onAvatarFileSelected = async (event: Event) => {
   const file = input.files?.[0];
   input.value = "";
   if (!file) return;
+  avatarUpload.error = null;
+  avatarUpload.fileName = null;
   try {
-    avatarUploading.value = true;
-    avatarUploadError.value = null;
-    const uploaded = await uploadMedia([file]);
-    if (uploaded.length && uploaded[0].url) {
-      form.avatarUrl = uploaded[0].url;
-    } else {
-      avatarUploadError.value = "上传失败，请重试";
+    avatarUpload.uploading = true;
+    const [uploaded] = await uploadMedia([file]);
+    if (!uploaded || uploaded.mediaType !== "image") {
+      avatarUpload.error = "请上传图片文件";
+      return;
     }
+    const url = typeof uploaded.url === "string" ? uploaded.url.trim() : "";
+    if (!url) {
+      avatarUpload.error = "上传失败，请重试";
+      return;
+    }
+    form.avatarUrl = url;
+    avatarUpload.fileName = uploaded.originalFilename ?? file.name;
   } catch (error: any) {
-    avatarUploadError.value = error?.response?.data?.message ?? "上传失败";
+    avatarUpload.error = error?.response?.data?.message ?? "上传失败";
   } finally {
-    avatarUploading.value = false;
+    avatarUpload.uploading = false;
   }
+};
+
+const onAvatarUrlInput = () => {
+  avatarUpload.fileName = null;
+  avatarUpload.error = null;
 };
 
 const toggleEdit = () => {
   if (!profile.value) return;
+  avatarUpload.error = null;
   if (!isEditing.value) {
     fillForm(profile.value);
     formError.value = null;
-    avatarUploadError.value = null;
+  } else {
+    avatarUpload.fileName = null;
+    avatarUpload.uploading = false;
   }
   isEditing.value = !isEditing.value;
 };
@@ -384,6 +426,10 @@ const submitProfile = async () => {
   if (!profile.value) return;
   if (!form.displayName.trim()) {
     formError.value = "昵称不能为空";
+    return;
+  }
+  if (avatarUpload.uploading) {
+    formError.value = "头像上传中，请稍候";
     return;
   }
   updatingProfile.value = true;
@@ -795,23 +841,54 @@ onMounted(() => {
   gap: 0.75rem;
 }
 
+.avatar-field .image-upload-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .avatar-actions {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
 
-.avatar-actions button {
-  border: 1px solid rgba(99, 102, 241, 0.6);
+.avatar-actions .upload-button {
+  background: rgba(59, 130, 246, 0.25);
+  border: none;
+  border-radius: 999px;
+  color: #bfdbfe;
+  padding: 0.4rem 1.2rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.avatar-actions .upload-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar-actions .upload-button:not(:disabled):hover {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+.avatar-actions .ghost {
+  border: 1px solid rgba(148, 163, 184, 0.4);
   background: transparent;
-  color: #c7d2fe;
+  color: #e2e8f0;
   border-radius: 999px;
   padding: 0.35rem 1.1rem;
 }
 
-.avatar-actions .ghost {
-  border-color: rgba(148, 163, 184, 0.4);
-  color: #e2e8f0;
+.avatar-actions .ghost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar-field .upload-info {
+  font-size: 0.85rem;
+  color: #94a3b8;
 }
 
 .avatar-preview {

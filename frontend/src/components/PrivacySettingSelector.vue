@@ -4,10 +4,10 @@
       <input
         type="radio"
         class="radio"
-        name="privacy"
+        :name="radioGroupName"
         :value="option.value"
         :checked="option.value === modelValue"
-        @change="onSelect(option.value)"
+        @change="selectPrivacy(option.value)"
       />
       <div class="copy">
         <strong>{{ option.label }}</strong>
@@ -21,11 +21,20 @@
 <script setup lang="ts">
 import type { PrivacySetting } from "@/types/user";
 
-type Option = {
+interface PrivacyOption {
   value: PrivacySetting;
   label: string;
   description: string;
-};
+}
+
+const PRIVACY_OPTIONS: PrivacyOption[] = [
+  { value: "PUBLIC", label: "公开", description: "任何人都可以访问并查看你的主页" },
+  { value: "FOLLOWERS_ONLY", label: "仅粉丝可见", description: "只有你的粉丝才能访问你的主页" },
+  { value: "PRIVATE", label: "完全私密", description: "只有你自己可以访问主页" },
+];
+
+let selectorSeed = 0;
+const nextGroupName = () => `privacy-setting-${++selectorSeed}`;
 
 const props = defineProps<{
   modelValue: PrivacySetting;
@@ -35,13 +44,10 @@ const emit = defineEmits<{
   (event: "update:modelValue", value: PrivacySetting): void;
 }>();
 
-const options: Option[] = [
-  { value: "PUBLIC", label: "公开", description: "任何人都可以访问并查看你的主页" },
-  { value: "FOLLOWERS_ONLY", label: "仅粉丝可见", description: "只有你的粉丝才能访问你的主页" },
-  { value: "PRIVATE", label: "完全私密", description: "只有你自己可以访问主页" },
-];
+const options = PRIVACY_OPTIONS;
+const radioGroupName = nextGroupName();
 
-const onSelect = (value: PrivacySetting) => {
+const selectPrivacy = (value: PrivacySetting) => {
   if (value !== props.modelValue) {
     emit("update:modelValue", value);
   }

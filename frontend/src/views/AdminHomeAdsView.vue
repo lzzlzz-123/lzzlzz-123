@@ -22,16 +22,37 @@
           />
         </div>
         <div class="form-row">
-          <label for="admin-ad-image">图片地址</label>
-          <input
-            id="admin-ad-image"
-            v-model="createForm.imageUrl"
-            type="url"
-            maxlength="255"
-            required
-            placeholder="https://example.com/banner.png"
-            @input="clearCreateFeedback"
-          />
+          <label for="admin-ad-image">广告图片</label>
+          <div class="image-upload-group">
+            <button
+              type="button"
+              class="upload-button"
+              :disabled="createImageUpload.uploading"
+              @click="triggerCreateImagePicker"
+            >
+              {{ createImageUpload.uploading ? "上传中..." : createForm.imageUrl ? "重新上传图片" : "上传图片" }}
+            </button>
+            <input
+              id="admin-ad-image"
+              ref="createImageInput"
+              type="file"
+              accept="image/*"
+              hidden
+              @change="onCreateImageSelected"
+            />
+            <span v-if="createImageUpload.fileName" class="upload-info">{{ createImageUpload.fileName }}</span>
+            <input
+              v-model="createForm.imageUrl"
+              type="text"
+              readonly
+              maxlength="255"
+              placeholder="请先上传图片"
+            />
+          </div>
+          <p v-if="createImageUpload.error" class="error">{{ createImageUpload.error }}</p>
+          <div v-if="createForm.imageUrl" class="image-preview">
+            <img :src="createForm.imageUrl" alt="广告预览" />
+          </div>
         </div>
         <div class="form-row">
           <label for="admin-ad-target">跳转链接</label>
@@ -95,15 +116,45 @@
                 />
               </div>
               <div class="form-row">
-                <label :for="`ad-image-${ad.id}`">图片地址</label>
-                <input
-                  :id="`ad-image-${ad.id}`"
-                  v-model="formState[ad.id].imageUrl"
-                  type="url"
-                  maxlength="255"
-                  required
-                  @input="onFieldChange(ad.id)"
-                />
+                <label :for="`ad-image-${ad.id}`">广告图片</label>
+                <div class="image-upload-group">
+                  <button
+                    type="button"
+                    class="upload-button"
+                    :disabled="editImageUpload[ad.id]?.uploading"
+                    @click="triggerEditImagePicker(ad.id)"
+                  >
+                    {{
+                      editImageUpload[ad.id]?.uploading
+                        ? "上传中..."
+                        : formState[ad.id].imageUrl
+                        ? "重新上传图片"
+                        : "上传图片"
+                    }}
+                  </button>
+                  <input
+                    :id="`ad-image-${ad.id}`"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    :ref="(el) => registerEditFileInput(ad.id, el as HTMLInputElement | null)"
+                    @change="onEditImageSelected(ad.id, $event)"
+                  />
+                  <span v-if="editImageUpload[ad.id]?.fileName" class="upload-info">
+                    {{ editImageUpload[ad.id]?.fileName }}
+                  </span>
+                  <input
+                    v-model="formState[ad.id].imageUrl"
+                    type="text"
+                    readonly
+                    maxlength="255"
+                    placeholder="请上传图片"
+                  />
+                </div>
+                <p v-if="editImageUpload[ad.id]?.error" class="error">{{ editImageUpload[ad.id]?.error }}</p>
+                <div v-if="formState[ad.id].imageUrl" class="image-preview">
+                  <img :src="formState[ad.id].imageUrl" :alt="formState[ad.id].title" />
+                </div>
               </div>
               <div class="form-row">
                 <label :for="`ad-target-${ad.id}`">跳转链接</label>
@@ -163,6 +214,7 @@
 import { onMounted, reactive, ref } from "vue";
 import { useHomeAdStore } from "@/stores/homeAds";
 import { fetchAdminHomeAds, createHomeAd, updateHomeAd, deleteHomeAd } from "@/api/homeAds";
+import { uploadMedia } from "@/api/media";
 import type { HomeAd } from "@/types/homeAd";
 
 interface AdFormModel {
@@ -173,7 +225,23 @@ interface AdFormModel {
   active: boolean;
 }
 
+interface UploadState {
+  uploading: boolean;
+  error: string | null;
+  fileName: string | null;
+}
+
 const homeAdStore = useHomeAdStore();
+
+const createImageInput = ref<HTMLInputElement | null>(null);
+const createImageUpload = reactive<UploadState>({
+  uploading: false,
+  error: null,
+  fileName: null,
+});
+
+const editImageUpload = reactive<Record<number, UploadState>>({});
+const adFileInputs = new Map<number, HTMLInputElement>();
 
 const ads = ref<HomeAd[]>([]);
 const loading = ref(false);
@@ -242,6 +310,8 @@ const sanitizeAdList = (items: HomeAd[]): HomeAd[] => {
 const resetFormState = (items: HomeAd[]) => {
   Object.keys(formState).forEach((key) => delete formState[Number(key)]);
   Object.keys(rowStatus).forEach((key) => delete rowStatus[Number(key)]);
+  Object.keys(editImageUpload).forEach((key) => delete editImageUpload[Number(key)]);
+  adFileInputs.clear();
   items.forEach((ad) => {
     formState[ad.id] = {
       title: ad.title,
@@ -251,7 +321,102 @@ const resetFormState = (items: HomeAd[]) => {
       active: ad.active,
     };
     rowStatus[ad.id] = { error: null, success: null };
+    editImageUpload[ad.id] = { uploading: false, error: null, fileName: null };
   });
+};
+
+const ensureEditUploadEntry = (adId: number): UploadState => {
+  if (!editImageUpload[adId]) {
+    editImageUpload[adId] = { uploading: false, error: null, fileName: null };
+  }
+  return editImageUpload[adId];
+};
+
+const registerEditFileInput = (adId: number, el: HTMLInputElement | null) => {
+  if (el) {
+    adFileInputs.set(adId, el);
+  } else {
+    adFileInputs.delete(adId);
+  }
+};
+
+const triggerCreateImagePicker = () => {
+  createImageUpload.error = null;
+  clearCreateFeedback();
+  createImageInput.value?.click();
+};
+
+const onCreateImageSelected = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) {
+    return;
+  }
+  clearCreateFeedback();
+  createImageUpload.error = null;
+  try {
+    createImageUpload.uploading = true;
+    const [uploaded] = await uploadMedia([file]);
+    if (!uploaded || uploaded.mediaType !== "image") {
+      createImageUpload.error = "请上传图片文件";
+      return;
+    }
+    const url = typeof uploaded.url === "string" ? uploaded.url.trim() : "";
+    if (!url) {
+      createImageUpload.error = "上传失败，请重试";
+      return;
+    }
+    createForm.imageUrl = url;
+    createImageUpload.fileName = uploaded.originalFilename ?? file.name;
+  } catch (error: any) {
+    createImageUpload.error = error?.response?.data?.message ?? "上传失败，请重试";
+  } finally {
+    createImageUpload.uploading = false;
+  }
+};
+
+const triggerEditImagePicker = (adId: number) => {
+  const state = ensureEditUploadEntry(adId);
+  state.error = null;
+  const input = adFileInputs.get(adId);
+  input?.click();
+};
+
+const onEditImageSelected = async (adId: number, event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) {
+    return;
+  }
+  const state = ensureEditUploadEntry(adId);
+  state.error = null;
+  const model = formState[adId];
+  if (!model) {
+    return;
+  }
+  updateRowStatus(adId, { error: null, success: null });
+  try {
+    state.uploading = true;
+    const [uploaded] = await uploadMedia([file]);
+    if (!uploaded || uploaded.mediaType !== "image") {
+      state.error = "请上传图片文件";
+      return;
+    }
+    const url = typeof uploaded.url === "string" ? uploaded.url.trim() : "";
+    if (!url) {
+      state.error = "上传失败，请重试";
+      return;
+    }
+    model.imageUrl = url;
+    state.fileName = uploaded.originalFilename ?? file.name;
+    onFieldChange(adId);
+  } catch (error: any) {
+    state.error = error?.response?.data?.message ?? "上传失败，请重试";
+  } finally {
+    state.uploading = false;
+  }
 };
 
 const updateRowStatus = (id: number, message: { error?: string | null; success?: string | null }) => {
@@ -291,10 +456,16 @@ const loadAds = async () => {
 const clearCreateFeedback = () => {
   createError.value = null;
   createSuccess.value = null;
+  createImageUpload.error = null;
 };
 
 const submitCreate = async () => {
   if (creating.value) return;
+  if (createImageUpload.uploading) {
+    createError.value = "图片上传中，请稍候";
+    createSuccess.value = null;
+    return;
+  }
   const title = createForm.title.trim();
   const imageUrl = createForm.imageUrl.trim();
   const targetUrl = createForm.targetUrl.trim();
@@ -321,6 +492,11 @@ const submitCreate = async () => {
     createForm.targetUrl = "";
     createForm.displayOrder = 0;
     createForm.active = true;
+    createImageUpload.fileName = null;
+    createImageUpload.error = null;
+    if (createImageInput.value) {
+      createImageInput.value.value = "";
+    }
     await loadAds();
   } catch (error: any) {
     createError.value = error?.response?.data?.message ?? "创建失败";
@@ -339,6 +515,11 @@ const onFieldChange = (adId: number) => {
 const saveAd = async (adId: number) => {
   const model = formState[adId];
   if (!model || savingId.value === adId) {
+    return;
+  }
+  const uploadState = editImageUpload[adId];
+  if (uploadState?.uploading) {
+    updateRowStatus(adId, { error: "图片上传中，请稍候" });
     return;
   }
   const title = model.title.trim();
@@ -483,6 +664,54 @@ onMounted(() => {
   background: rgba(15, 23, 42, 0.6);
   color: #e2e8f0;
   padding: 0.6rem 0.85rem;
+}
+
+.image-upload-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form .upload-button,
+.ad-form .upload-button {
+  align-self: flex-start;
+  background: rgba(59, 130, 246, 0.25);
+  border-radius: 999px;
+  border: none;
+  padding: 0.45rem 1.2rem;
+  color: #bfdbfe;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.form .upload-button:disabled,
+.ad-form .upload-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form .upload-button:not(:disabled):hover,
+.ad-form .upload-button:not(:disabled):hover {
+  background: rgba(59, 130, 246, 0.45);
+}
+
+.upload-info {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.image-preview {
+  display: flex;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.image-preview img {
+  max-width: 220px;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  object-fit: cover;
 }
 
 .row-inline {

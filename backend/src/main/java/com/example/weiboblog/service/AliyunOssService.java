@@ -1,21 +1,18 @@
 package com.example.weiboblog.service;
 
+import com.aliyun.oss.OSS;
+import com.aliyun.oss.model.ObjectMetadata;
+import com.aliyun.oss.model.PutObjectRequest;
+import com.example.weiboblog.config.AliyunOssProperties;
 import com.example.weiboblog.dto.MediaUploadResponse;
 import com.example.weiboblog.exception.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -24,7 +21,7 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-public class MediaService {
+public class AliyunOssService {
 
     private static final long MAX_FILE_SIZE_BYTES = 50L * 1024 * 1024;
     private static final Map<String, String> MEDIA_KIND = Map.ofEntries(
@@ -53,61 +50,54 @@ public class MediaService {
             "video/x-m4v", "m4v"
     );
 
-    private final Path storageRoot;
-    private final String publicBaseUrl;
-    private final AliyunOssService aliyunOssService;
-    private final boolean useAliyunOss;
+    private final OSS ossClient;
+    private final AliyunOssProperties properties;
 
-    public MediaService(@Value("${app.media.storage-path:uploads}") String storagePath,
-                        @Value("${app.media.base-url:/media/}") String publicBaseUrl,
-                        @Autowired(required = false) AliyunOssService aliyunOssService) {
-        this.storageRoot = Paths.get(storagePath).toAbsolutePath().normalize();
-        this.publicBaseUrl = normalizeBaseUrl(publicBaseUrl);
-        this.aliyunOssService = aliyunOssService;
-        this.useAliyunOss = aliyunOssService != null;
-        
-        if (!useAliyunOss) {
-            try {
-                Files.createDirectories(this.storageRoot);
-                log.info("Using local file storage for media uploads");
-            } catch (IOException ex) {
-                throw new IllegalStateException("Failed to create media storage directory", ex);
-            }
-        } else {
-            log.info("Using Aliyun OSS for media uploads");
-        }
+    public AliyunOssService(OSS ossClient, AliyunOssProperties properties) {
+        this.ossClient = ossClient;
+        this.properties = properties;
     }
 
-    public MediaUploadResponse store(MultipartFile file) {
+    public MediaUploadResponse uploadFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("请选择要上传的文件");
         }
-        
-        if (useAliyunOss) {
-            return aliyunOssService.uploadFile(file);
-        } else {
-            return storeLocally(file);
-        }
-    }
-
-    private MediaUploadResponse storeLocally(MultipartFile file) {
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
             throw new BadRequestException("文件过大，最大支持 50MB");
         }
+        
         String contentType = determineContentType(file);
         validateContentType(contentType);
 
         String extension = resolveExtension(file, contentType);
         String fileName = buildFileName(extension);
-        Path target = storageRoot.resolve(fileName);
+        String objectKey = buildObjectKey(fileName);
+        
         try {
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType(contentType);
+            metadata.setContentLength(file.getSize());
+            
+            PutObjectRequest putRequest = new PutObjectRequest(
+                    properties.getBucketName(),
+                    objectKey,
+                    file.getInputStream(),
+                    metadata
+            );
+            
+            ossClient.putObject(putRequest);
+            
+            String url = buildFileUrl(objectKey);
+            String mediaType = MEDIA_KIND.getOrDefault(contentType, "unknown");
+            
+            log.info("Successfully uploaded file to OSS: {}", objectKey);
+            
+            return new MediaUploadResponse(url, contentType, mediaType, file.getSize(), file.getOriginalFilename());
+            
         } catch (IOException ex) {
-            throw new IllegalStateException("保存文件失败", ex);
+            log.error("Failed to upload file to OSS", ex);
+            throw new IllegalStateException("上传文件失败", ex);
         }
-        String url = publicBaseUrl + fileName;
-        String mediaType = MEDIA_KIND.getOrDefault(contentType, "unknown");
-        return new MediaUploadResponse(url, contentType, mediaType, file.getSize(), file.getOriginalFilename());
     }
 
     private String determineContentType(MultipartFile file) {
@@ -157,26 +147,14 @@ public class MediaService {
         return timestamp + "_" + random + "." + sanitizedExt;
     }
 
-    private String normalizeBaseUrl(String baseUrl) {
-        String value = baseUrl == null ? "/media/" : baseUrl.trim();
-        if (!value.startsWith("/")) {
-            value = "/" + value;
-        }
-        if (!value.endsWith("/")) {
-            value = value + "/";
-        }
-        return value;
+    private String buildObjectKey(String fileName) {
+        return "uploads/" + fileName;
     }
 
-    public List<MediaUploadResponse> store(List<MultipartFile> files) {
-        if (files == null || files.isEmpty()) {
-            throw new BadRequestException("请选择要上传的文件");
+    private String buildFileUrl(String objectKey) {
+        if (StringUtils.hasText(properties.getDomain())) {
+            return properties.getDomain().trim() + "/" + objectKey;
         }
-        if (files.size() > 4) {
-            throw new BadRequestException("单次最多上传4个文件");
-        }
-        return files.stream()
-                .map(this::store)
-                .toList();
+        return "https://" + properties.getBucketName() + "." + properties.getEndpoint() + "/" + objectKey;
     }
 }

@@ -98,7 +98,9 @@ const props = defineProps<{
   lockedTopic?: TopicSummary | null;
 }>();
 
-const emit = defineEmits<["posted"]>();
+const emit = defineEmits<{
+  posted: [];
+}>();
 const authStore = useAuthStore();
 const feedStore = useFeedStore();
 const topicStore = useTopicStore();

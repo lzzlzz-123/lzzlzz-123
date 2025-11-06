@@ -7,6 +7,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.OffsetDateTime;
 
@@ -32,6 +33,11 @@ public class GlobalExceptionHandler {
                 .orElse("Validation error")
                 : "Validation error";
         return buildError(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleMaxUpload(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.BAD_REQUEST, "文件过大，最大支持 50MB", request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)

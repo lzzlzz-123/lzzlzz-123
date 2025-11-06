@@ -29,6 +29,7 @@ This project implements a microblog-style personal blog platform inspired by Wei
 - MySQL persistence using Spring Data JPA
 - RESTful APIs under `/api/**`
 - Comprehensive exception handling with consistent JSON error responses
+- Media upload with Aliyun OSS integration (fallback to local storage)
 
 ### Frontend (Vue 3 + Vite)
 - Login and registration views
@@ -38,6 +39,7 @@ This project implements a microblog-style personal blog platform inspired by Wei
 - Post detail view with like and comment interactions
 - Pinia-based global stores for authentication and timeline state
 - Axios API client with interceptors for JWT handling
+- Avatar upload with direct file upload (no URL input required)
 
 ### Infrastructure
 - Redis cache for timeline acceleration
@@ -65,9 +67,18 @@ MYSQL_DATABASE=weiboblog
 MYSQL_USER=weiboblog
 MYSQL_PASSWORD=supersecret
 JWT_SECRET=change_this_secret
+
+# Optional: Aliyun OSS for media storage (if not configured, will use local storage)
+ALIYUN_OSS_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com
+ALIYUN_OSS_ACCESS_KEY_ID=your_access_key_id
+ALIYUN_OSS_ACCESS_KEY_SECRET=your_access_key_secret
+ALIYUN_OSS_BUCKET_NAME=your_bucket_name
+ALIYUN_OSS_DOMAIN=https://your_custom_domain.com
 ```
 
 > **Note:** The backend reads `JWT_SECRET` from the environment (or defaults to a fallback value for development). Customize this for production usage.
+> 
+> **Aliyun OSS:** Optional configuration for media storage. If not provided, the system will fall back to local file storage. See [docs/aliyun-oss-setup.md](docs/aliyun-oss-setup.md) for detailed setup instructions.
 
 ### Running with Docker Compose
 

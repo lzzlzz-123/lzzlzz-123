@@ -79,14 +79,6 @@
                 />
               </div>
               <span v-if="avatarUpload.fileName" class="upload-info">{{ avatarUpload.fileName }}</span>
-              <input
-                id="profile-avatar"
-                v-model="form.avatarUrl"
-                type="url"
-                maxlength="255"
-                placeholder="https://example.com/avatar.png"
-                @input="onAvatarUrlInput"
-              />
             </div>
             <p v-if="avatarUpload.error" class="form-hint error">{{ avatarUpload.error }}</p>
             <div v-if="form.avatarUrl" class="avatar-preview">
@@ -402,11 +394,6 @@ const onAvatarFileSelected = async (event: Event) => {
   } finally {
     avatarUpload.uploading = false;
   }
-};
-
-const onAvatarUrlInput = () => {
-  avatarUpload.fileName = null;
-  avatarUpload.error = null;
 };
 
 const toggleEdit = () => {

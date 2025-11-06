@@ -10,7 +10,7 @@ public final class UserMapper {
     }
 
     public static UserSummaryDto toSummary(User user) {
-        return new UserSummaryDto(user.getId(), user.getUsername(), user.getDisplayName(), user.getAvatarUrl(), user.isAdmin());
+        return new UserSummaryDto(user.getId(), user.getUsername(), user.getDisplayName(), user.getAvatarUrl(), user.isAdmin(), user.getPrivacySetting());
     }
 
     public static UserProfileResponse toProfile(User user,

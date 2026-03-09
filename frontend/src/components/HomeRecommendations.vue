@@ -42,13 +42,15 @@ onMounted(() => {
 
 <style scoped>
 .home-recommendations {
-  background: rgba(15, 23, 42, 0.65);
-  border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 1.25rem 1.5rem;
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .recommendations-header {
@@ -60,38 +62,49 @@ onMounted(() => {
 
 .recommendations-header h3 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(to right, #f8fafc, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .recommendations-header button {
   border: none;
-  border-radius: 999px;
-  padding: 0.4rem 1.25rem;
-  background: rgba(99, 102, 241, 0.2);
-  color: #c7d2fe;
-  font-weight: 500;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.2s;
 }
 
 .recommendations-header button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .recommendations-header button:not(:disabled):hover {
-  background: rgba(99, 102, 241, 0.35);
+  background: rgba(56, 189, 248, 0.2);
+  transform: translateY(-1px);
 }
 
 .recommendations-error {
   margin: 0;
-  color: #fca5a5;
+  color: #fb7185;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .recommendations-placeholder,
 .recommendations-empty {
   margin: 0;
-  color: #94a3b8;
+  color: #64748b;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 2rem 0;
 }
 
 .recommendations-list {

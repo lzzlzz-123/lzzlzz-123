@@ -192,10 +192,13 @@ onBeforeUnmount(() => {
 .home-carousel {
   position: relative;
   overflow: hidden;
-  border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(15, 23, 42, 0.65);
-  min-height: 200px;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  min-height: 240px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
 }
 
 .carousel-track {
@@ -208,7 +211,7 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.6s ease;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
@@ -230,107 +233,126 @@ onBeforeUnmount(() => {
   height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 1.5rem;
+  transition: transform 10s linear;
+}
+
+.carousel-slide.active .slide-content img {
+  transform: scale(1.1);
 }
 
 .slide-overlay {
   position: absolute;
-  left: 1.5rem;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  padding: 1rem 1.25rem;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(30, 41, 59, 0.4));
-  color: #e2e8f0;
-  backdrop-filter: blur(8px);
+  left: 2rem;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 1.25rem 1.75rem;
+  border-radius: 1.25rem;
+  background: rgba(15, 23, 42, 0.6);
+  color: #f8fafc;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
 .slide-overlay h3 {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
 .nav-button {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  border: none;
-  background: rgba(15, 23, 42, 0.6);
-  color: #e2e8f0;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.5);
+  color: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   cursor: pointer;
-  transition: background 0.3s, transform 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10;
 }
 
 .nav-button:hover {
-  background: rgba(99, 102, 241, 0.5);
-  transform: translateY(-50%) scale(1.05);
+  background: #38bdf8;
+  color: #0f172a;
+  border-color: #38bdf8;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
 }
 
 .nav-button.prev {
-  left: 1rem;
+  left: 1.5rem;
 }
 
 .nav-button.next {
-  right: 1rem;
+  right: 1.5rem;
 }
 
 .indicators {
   position: absolute;
-  bottom: 1rem;
+  bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  z-index: 10;
+  padding: 0.5rem;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 999px;
 }
 
 .indicator {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: none;
-  background: rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.3);
   padding: 0;
   cursor: pointer;
-  transition: transform 0.3s, background 0.3s;
+  transition: all 0.3s;
 }
 
 .indicator.active {
-  background: rgba(99, 102, 241, 0.9);
+  background: #38bdf8;
   transform: scale(1.2);
+  width: 24px;
+  border-radius: 4px;
 }
 
 @media (max-width: 640px) {
   .home-carousel {
-    border-radius: 1rem;
-  }
-
-  .slide-content img {
-    border-radius: 1rem;
-    min-height: 180px;
+    border-radius: 1.5rem;
+    min-height: 200px;
   }
 
   .slide-overlay {
     left: 1rem;
     right: 1rem;
     bottom: 1rem;
-    padding: 0.75rem 1rem;
+    padding: 1rem;
   }
 
   .slide-overlay h3 {
-    font-size: 1.05rem;
+    font-size: 1.15rem;
   }
 
   .nav-button {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.5rem;
   }
 }
 </style>

@@ -18,7 +18,11 @@
       </nav>
     </header>
     <main class="app-main">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </RouterView>
     </main>
   </div>
 </template>
@@ -45,13 +49,18 @@ onMounted(() => {
 }
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 2rem;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.75rem 2rem;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.3);
 }
 
 .brand {
@@ -59,51 +68,98 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.brand:hover {
+  opacity: 0.9;
 }
 
 .logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
-  background: linear-gradient(135deg, #22d3ee, #6366f1);
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.6rem;
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
   color: #0f172a;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 1.15rem;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+.brand h1 {
   font-size: 1.25rem;
+  letter-spacing: -0.025em;
+  background: linear-gradient(to right, #f8fafc, #cbd5e1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 nav {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 nav a {
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
-  transition: background 0.3s;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+nav a:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 nav a.router-link-active {
-  background: rgba(99, 102, 241, 0.2);
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
 }
 
 .logout {
   border: none;
-  background: rgba(248, 113, 113, 0.2);
-  color: #fecaca;
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
+  background: rgba(244, 63, 94, 0.1);
+  color: #fb7185;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.logout:hover {
+  background: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
 }
 
 .app-main {
   flex: 1;
-  max-width: 960px;
+  max-width: 800px;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+  padding: 2rem 1rem 4rem;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

@@ -57,81 +57,98 @@ const formattedJoinDate = computed(() => {
 
 <style scoped>
 .about-card {
-  background: rgba(15, 23, 42, 0.7);
-  border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 header h3 {
   margin: 0;
-  font-size: 1.1rem;
-  color: #e2e8f0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f8fafc;
 }
 
 header p {
   margin: 0.25rem 0 0;
-  font-size: 0.85rem;
-  color: #94a3b8;
+  font-size: 0.9rem;
+  color: #64748b;
 }
 
 .body {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 .bio h4 {
-  margin: 0 0 0.35rem;
-  font-size: 0.95rem;
-  color: #cbd5f5;
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #cbd5e1;
 }
 
 .bio p {
   margin: 0;
   color: #e2e8f0;
-  line-height: 1.6;
+  line-height: 1.7;
+  font-size: 1.05rem;
 }
 
 .empty {
-  padding: 0.75rem 1rem;
-  border-radius: 0.85rem;
-  border: 1px dashed rgba(148, 163, 184, 0.25);
-  color: #94a3b8;
-  font-size: 0.9rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.2);
+  color: #64748b;
+  font-size: 0.95rem;
+  text-align: center;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
 
 .item {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.85rem 1rem;
-  border-radius: 0.85rem;
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s;
+}
+
+.item:hover {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(56, 189, 248, 0.2);
+  transform: translateY(-2px);
 }
 
 .label {
   font-size: 0.8rem;
-  color: #94a3b8;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .value {
-  color: #e2e8f0;
+  color: #f8fafc;
   font-weight: 600;
+  font-size: 1rem;
 }
 
 .placeholder {
-  color: #64748b;
+  color: #475569;
 }
 </style>
